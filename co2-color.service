@@ -1,0 +1,10 @@
+[Unit]
+Description=Set the color of APA102 LEDs according to current co2 levels
+
+[Service]
+User=root
+Restart=always
+ExecStart=/usr/local/bin/co2-color-service.py
+
+[Install]
+WantedBy=multi-user.target
