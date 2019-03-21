@@ -24,7 +24,7 @@ from driver import apa102
 import re
 import signal
 
-
+valuefile = '/run/sensors/scd30/last'
 
 class Simple:
         
@@ -75,7 +75,10 @@ class Simple:
             current_cycle = 0
 
             while True:  # Loop forever
-              with open('/run/sensors/scd30/last', 'r') as content_file:
+              now = time.time()
+              ftime = os.path.getmtime(valuefile)
+
+              with open(valuefile, 'r') as content_file:
                 content = content_file.read()
                 dataarray = content.splitlines()
                 for i in dataarray:
