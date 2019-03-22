@@ -23,7 +23,7 @@ SPI MISO (they don't talk back) and Chip Select (APA102 are always on) are not u
 ## Software preparations
 
 - Activate SPI
-- Install Python 3 and some packages required by the Adafruit library: `aptitude install python3-dev python3-pip python3-smbus python3-rpi.gpio`
+- Install Python 3 and some packages required by the Adafruit library: `aptitude install python3-dev python3-pip python3-smbus python3-rpi.gpio python3-setuptools`
 - Fetch the Adafruit_Python_GPIO library: `cd /tmp && wget https://github.com/adafruit/Adafruit_Python_GPIO/archive/master.zip && unzip master.zip`
 - Install the library: `cd Adafruit_Python_GPIO-master && sudo python3 ./setup.py install`
 
