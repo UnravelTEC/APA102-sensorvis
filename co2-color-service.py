@@ -22,14 +22,14 @@
 import time
 from driver import apa102
 import re
-import signal
+import signal,os
 
 valuefile = '/run/sensors/scd30/last'
 
 class Simple:
         
     def __init__(self, num_led, pause_value = 0, num_steps_per_cycle = 100,
-                 num_cycles = -1, global_brightness = 255, order = 'rbg',
+                 num_cycles = -1, global_brightness = 255, order = 'rgb',
                  mosi = 10, sclk = 11):
         self.num_led = num_led # The number of LEDs in the strip
         self.pause_value = pause_value # How long to pause between two runs
@@ -61,6 +61,19 @@ class Simple:
         strip.clear_strip()
         strip.cleanup()
 
+    def setAll(self, strip, color):
+      # print(color)
+      for i in range(0,self.num_led):
+        strip.set_pixel_rgb(i, color, 20)
+      strip.show()
+
+    def rotate(self,strip):
+      self.setAll(strip,0xFF0000)
+      time.sleep(0.3)
+      self.setAll(strip,0x00FF00)
+      time.sleep(0.3)
+      self.setAll(strip,0x0000FF)
+      time.sleep(0.3)
 
     def start(self):
         """This method does the actual work."""
@@ -75,28 +88,36 @@ class Simple:
             current_cycle = 0
 
             while True:  # Loop forever
+              if not os.path.isfile(valuefile):
+                self.rotate(strip)
+                continue
+
               now = time.time()
               ftime = os.path.getmtime(valuefile)
+              if ftime + 2 < now:
+                print('valuefile older than 2s')
+                self.setAll(strip, 0x0000FF)
+                time.sleep(1)
+                continue
 
               with open(valuefile, 'r') as content_file:
                 content = content_file.read()
                 dataarray = content.splitlines()
+                value = 999999
                 for i in dataarray:
                   if re.search(r'gas="CO2"', i):
                     value = float(i.split()[1])
                     if(value < 800):
-                      strip.set_pixel_rgb(0, 0x0000FF,20)
-                      strip.set_pixel_rgb(1, 0x0000FF,20)
+                      self.setAll(strip, 0x00FF00)
                     elif(value < 1500):
-                      strip.set_pixel_rgb(0, 0xFF00AA,20)
-                      strip.set_pixel_rgb(1, 0xFF00AA,20)
+                      self.setAll(strip, 0xFFAA00)
                     else:
-                      strip.set_pixel_rgb(0, 0xFF0000,20)
-                      strip.set_pixel_rgb(1, 0xFF0000,20)
-                    
-#                    print(value)
+                      self.setAll(strip, 0xFF0000)
+                if value == 999999:
+                  print('valuefile empty')
+                  self.setAll(strip, 0x0000FF)
 
-              strip.show()
+#                    print(value)
 
               time.sleep(1)
 
