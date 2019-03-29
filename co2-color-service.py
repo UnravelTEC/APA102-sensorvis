@@ -125,7 +125,7 @@ class Simple:
             print('Interrupted...')
             self.cleanup(strip)
 
-myclass = Simple(num_led=2, pause_value=3, num_steps_per_cycle=1, num_cycles=1)
+myclass = Simple(num_led=4, pause_value=3, num_steps_per_cycle=1, num_cycles=1)
 myclass.start()
 
 signal.signal(signal.SIGINT, myclass.cleanup)
