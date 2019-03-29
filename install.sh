@@ -24,7 +24,7 @@ targetdir=/usr/local/bin/
 mkdir -p $targetdir 
 
 if [ ! -f "/usr/local/lib/python3.5/dist-packages/driver/apa102.py" ]; then
-  pip3 install .
+  pip3 install --upgrade .
 fi
 
 exe1=co2-color-service.py
