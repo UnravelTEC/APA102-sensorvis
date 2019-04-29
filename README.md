@@ -28,3 +28,16 @@ SPI MISO (they don't talk back) and Chip Select (APA102 are always on) are not u
 - Install the library: `cd Adafruit_Python_GPIO-master && sudo python3 ./setup.py install`
 
 
+## SPI frequency
+
+depending on your level shifter design, you need to reduce the standard SPI frequency from 8MHz down to a value your level shifter can manage.
+
+The frequency is to be set in `driver/apa102.py`.
+
+
+## TODOs
+
+* heller/dunkler wowo effekt, während der Daemon lauft damit man sieht dass er no aktiv is
+* vorkonfigurieren für LED-strip
+  * auch die Länge der aktivierten LEDs vom CO2-wert abhängig machen
+  * farbe für alle ändern
