@@ -23,6 +23,7 @@ import time
 from driver import apa102
 import re
 import signal,os
+import math
 
 valuefile = '/run/sensors/scd30/last'
 
@@ -67,6 +68,59 @@ class Simple:
         strip.set_pixel_rgb(i, color, 20)
       strip.show()
 
+    def setToLevel(self, strip, value):
+      maxled = self.num_led
+      green = 0x00FF00
+      yellow = 0xFFAA00
+      orange = 0xFF3300
+      red = 0xFF0000
+
+      # green: 0-800
+      # yellow: 800-1500
+      # red: 1500-2500 (2500 == end of strip)
+      green_begin = 300
+      yellow_threshold = 800
+      orange_threshold = 1500
+      red_threshold = 2500
+      max_value = 3500
+
+      num_static = 2
+
+      # set first ones according to value
+      for i in range(0, num_static):
+        if value < yellow_threshold:
+          strip.set_pixel_rgb(i, green, 20)
+        elif value < orange_threshold:
+          strip.set_pixel_rgb(i, yellow, 20)
+        elif value < red_threshold:
+          strip.set_pixel_rgb(i, orange, 20)
+        else: 
+          strip.set_pixel_rgb(i, red, 20)
+
+      if value > max_value: # cap at max
+        value = max_value
+
+      how_many_leds_lit = math.ceil(value / max_value * maxled)
+      yellow_led_start = math.ceil(yellow_threshold / max_value * maxled)
+      orange_led_start = math.ceil(orange_threshold / max_value * maxled)
+      red_led_start = math.ceil(red_threshold / max_value * maxled)
+
+      print(how_many_leds_lit)
+
+      for i in range(num_static, how_many_leds_lit):
+        if i < yellow_led_start:
+          strip.set_pixel_rgb(i, green, 20)
+        elif i < orange_led_start:
+          strip.set_pixel_rgb(i, yellow, 20)
+        elif i < red_led_start:
+          strip.set_pixel_rgb(i, orange, 20)
+        else:
+          strip.set_pixel_rgb(i, red, 20)
+      for i in range(how_many_leds_lit, maxled):
+        strip.set_pixel_rgb(i,0x000000, 0)
+
+      strip.show()
+
     def rotate(self,strip):
       self.setAll(strip,0xFF0000)
       time.sleep(0.3)
@@ -107,12 +161,15 @@ class Simple:
                 for i in dataarray:
                   if re.search(r'gas="CO2"', i):
                     value = float(i.split()[1])
+                    self.setToLevel(strip, value)
+                    """
                     if(value < 800):
                       self.setAll(strip, 0x00FF00)
                     elif(value < 1500):
                       self.setAll(strip, 0xFFAA00)
                     else:
                       self.setAll(strip, 0xFF0000)
+                    """
                 if value == 999999:
                   print('valuefile empty')
                   self.setAll(strip, 0x0000FF)
@@ -126,8 +183,8 @@ class Simple:
             self.cleanup(strip)
 
 myclass = Simple(num_led=74, pause_value=3, num_steps_per_cycle=1, num_cycles=1)
-myclass.start()
 
 signal.signal(signal.SIGINT, myclass.cleanup)
 signal.signal(signal.SIGTERM, myclass.cleanup)
 
+myclass.start()
