@@ -27,6 +27,8 @@ import math
 
 valuefile = '/run/sensors/scd30/last'
 
+brightness = 10 # Percent
+
 class Simple:
         
     def __init__(self, num_led, pause_value = 0, num_steps_per_cycle = 100,
@@ -65,7 +67,7 @@ class Simple:
     def setAll(self, strip, color):
       # print(color)
       for i in range(0,self.num_led):
-        strip.set_pixel_rgb(i, color, 20)
+        strip.set_pixel_rgb(i, color, brightness)
       strip.show()
 
     def setToLevel(self, strip, value):
@@ -89,13 +91,13 @@ class Simple:
       # set first ones according to value
       for i in range(0, num_static):
         if value < yellow_threshold:
-          strip.set_pixel_rgb(i, green, 20)
+          strip.set_pixel_rgb(i, green, brightness)
         elif value < orange_threshold:
-          strip.set_pixel_rgb(i, yellow, 20)
+          strip.set_pixel_rgb(i, yellow, brightness)
         elif value < red_threshold:
-          strip.set_pixel_rgb(i, orange, 20)
+          strip.set_pixel_rgb(i, orange, brightness)
         else: 
-          strip.set_pixel_rgb(i, red, 20)
+          strip.set_pixel_rgb(i, red, brightness)
 
       if value > max_value: # cap at max
         value = max_value
@@ -109,13 +111,13 @@ class Simple:
 
       for i in range(num_static, how_many_leds_lit):
         if i < yellow_led_start:
-          strip.set_pixel_rgb(i, green, 20)
+          strip.set_pixel_rgb(i, green, brightness)
         elif i < orange_led_start:
-          strip.set_pixel_rgb(i, yellow, 20)
+          strip.set_pixel_rgb(i, yellow, brightness)
         elif i < red_led_start:
-          strip.set_pixel_rgb(i, orange, 20)
+          strip.set_pixel_rgb(i, orange, brightness)
         else:
-          strip.set_pixel_rgb(i, red, 20)
+          strip.set_pixel_rgb(i, red, brightness)
       for i in range(how_many_leds_lit, maxled):
         strip.set_pixel_rgb(i,0x000000, 0)
 
@@ -148,7 +150,7 @@ class Simple:
 
               now = time.time()
               ftime = os.path.getmtime(valuefile)
-              if ftime + 2 < now:
+              if ftime + 4 < now:
                 print('valuefile older than 2s')
                 self.setAll(strip, 0x0000FF)
                 time.sleep(1)
