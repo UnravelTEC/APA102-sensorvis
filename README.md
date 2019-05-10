@@ -38,6 +38,3 @@ The frequency is to be set in `driver/apa102.py`.
 ## TODOs
 
 * heller/dunkler wowo effekt, während der Daemon lauft damit man sieht dass er no aktiv is
-* vorkonfigurieren für LED-strip
-  * auch die Länge der aktivierten LEDs vom CO2-wert abhängig machen
-  * farbe für alle ändern
