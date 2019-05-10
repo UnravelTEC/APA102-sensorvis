@@ -28,6 +28,7 @@ import math
 valuefile = '/run/sensors/scd30/last'
 
 brightness = 10 # Percent
+timeout_s = 4
 
 class Simple:
         
@@ -151,8 +152,8 @@ class Simple:
 
               now = time.time()
               ftime = os.path.getmtime(valuefile)
-              if ftime + 4 < now:
-                print('valuefile older than 2s')
+              if ftime + timeout_s < now:
+                print('valuefile older than ' + str(timeout_s) + 's')
                 self.setAll(strip, 0x0000FF)
                 time.sleep(1)
                 continue
@@ -189,6 +190,7 @@ myclass = Simple(num_led=74, pause_value=3, num_steps_per_cycle=1, num_cycles=1)
 
 def functionCleanup(a,b):
   myclass.cleanup()
+  # FIXME on kill or C-C, GPIO-1.0.3-py3.5.egg/Adafruit_GPIO/SPI.py", line 83 throws "[Errno 9] Bad file descriptor", but it doesn't matter.
 
 signal.signal(signal.SIGINT, functionCleanup)
 signal.signal(signal.SIGTERM, functionCleanup)
