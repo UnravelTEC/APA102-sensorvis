@@ -42,6 +42,10 @@ class Simple:
         self.order = order # Strip colour ordering
         self.mosi = mosi # Master out slave in of the SPI protocol
         self.sclk = sclk # Clock line of the SPI protocol
+        self.strip = apa102.APA102(num_led=self.num_led,
+                              global_brightness=self.global_brightness,
+                              mosi = self.mosi, sclk = self.sclk,
+                              order=self.order) # Initialize the strip
 
     def init(self, strip, num_led):
         """This method is called to initialize a color program.
@@ -58,11 +62,11 @@ class Simple:
         """
         pass
 
-    def cleanup(self, strip):
+    def cleanup(self):
         """Cleanup method."""
-        self.shutdown(strip, self.num_led)
-        strip.clear_strip()
-        strip.cleanup()
+        self.shutdown(self.strip, self.num_led)
+        self.strip.clear_strip()
+        self.strip.cleanup()
 
     def setAll(self, strip, color):
       # print(color)
@@ -134,10 +138,7 @@ class Simple:
     def start(self):
         """This method does the actual work."""
         try:
-            strip = apa102.APA102(num_led=self.num_led,
-                                  global_brightness=self.global_brightness,
-                                  mosi = self.mosi, sclk = self.sclk,
-                                  order=self.order) # Initialize the strip
+            strip = self.strip
             strip.clear_strip()
             self.init(strip, self.num_led) # Call the subclasses init method
             strip.show()
@@ -186,7 +187,10 @@ class Simple:
 
 myclass = Simple(num_led=74, pause_value=3, num_steps_per_cycle=1, num_cycles=1)
 
-signal.signal(signal.SIGINT, myclass.cleanup)
-signal.signal(signal.SIGTERM, myclass.cleanup)
+def functionCleanup(a,b):
+  myclass.cleanup()
+
+signal.signal(signal.SIGINT, functionCleanup)
+signal.signal(signal.SIGTERM, functionCleanup)
 
 myclass.start()
