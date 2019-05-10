@@ -27,7 +27,7 @@ import math
 
 valuefile = '/run/sensors/scd30/last'
 
-brightness = 10 # Percent
+brightness = 100 # Percent
 timeout_s = 4
 
 class Simple:
@@ -77,9 +77,16 @@ class Simple:
 
     def setToLevel(self, strip, value):
       maxled = self.num_led
+      # for 5050
       green = 0x00FF00
       yellow = 0xFFAA00
       orange = 0xFF3300
+      red = 0xFF0000
+      # for 2020, they look different
+      green = 0x00EE00
+      yellow = 0x888800
+      orange = 0xCC7700
+      orange = 0xEE8800
       red = 0xFF0000
 
       # green: 0-800
@@ -91,14 +98,14 @@ class Simple:
       red_threshold = 2500
       max_value = 3500
 
-      num_static = 2
+      num_static = 0
 
       # set first ones according to value
       for i in range(0, num_static):
         if value < yellow_threshold:
-          strip.set_pixel_rgb(i, green, brightness)
+          strip.set_pixel_rgb(i, green, brightness/10)
         elif value < orange_threshold:
-          strip.set_pixel_rgb(i, yellow, brightness)
+          strip.set_pixel_rgb(i, yellow, brightness*10)
         elif value < red_threshold:
           strip.set_pixel_rgb(i, orange, brightness)
         else: 
@@ -112,17 +119,21 @@ class Simple:
       orange_led_start = math.ceil(orange_threshold / max_value * maxled)
       red_led_start = math.ceil(red_threshold / max_value * maxled)
 
-      print(how_many_leds_lit)
-
+      current_max_color = 'green'
       for i in range(num_static, how_many_leds_lit):
         if i < yellow_led_start:
           strip.set_pixel_rgb(i, green, brightness)
         elif i < orange_led_start:
           strip.set_pixel_rgb(i, yellow, brightness)
+          current_max_color = 'yellow'
         elif i < red_led_start:
           strip.set_pixel_rgb(i, orange, brightness)
+          current_max_color = 'orange'
         else:
           strip.set_pixel_rgb(i, red, brightness)
+          current_max_color = 'red'
+
+      print(str(how_many_leds_lit) + " " + current_max_color)
       for i in range(how_many_leds_lit, maxled):
         strip.set_pixel_rgb(i,0x000000, 0)
 
@@ -165,6 +176,7 @@ class Simple:
                 for i in dataarray:
                   if re.search(r'gas="CO2"', i):
                     value = float(i.split()[1])
+                    value = 5000
                     self.setToLevel(strip, value)
                     """
                     if(value < 800):
@@ -186,7 +198,7 @@ class Simple:
             print('Interrupted...')
             self.cleanup(strip)
 
-myclass = Simple(num_led=74, pause_value=3, num_steps_per_cycle=1, num_cycles=1)
+myclass = Simple(num_led=8, pause_value=3, num_steps_per_cycle=1, num_cycles=1)
 
 def functionCleanup(a,b):
   myclass.cleanup()
