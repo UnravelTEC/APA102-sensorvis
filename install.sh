@@ -19,6 +19,16 @@
 #
 # If you want to relicense this code under another license, please contact info+github@unraveltec.com.
 
+aptitude install python3-dev python3-pip python3-smbus python3-rpi.gpio python3-setuptools
+
+(
+  cd /tmp
+  wget https://github.com/adafruit/Adafruit_Python_GPIO/archive/master.zip
+  unzip master.zip
+  cd Adafruit_Python_GPIO-master
+  python3 ./setup.py install
+)
+
 targetdir=/usr/local/bin/
 
 mkdir -p $targetdir 
