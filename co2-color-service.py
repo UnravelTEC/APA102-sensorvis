@@ -91,7 +91,7 @@ class Simple:
       red_threshold = 2500
       max_value = 3500
 
-      num_static = 2
+      num_static = 0
 
       # set first ones according to value
       for i in range(0, num_static):
@@ -186,7 +186,7 @@ class Simple:
             print('Interrupted...')
             self.cleanup(strip)
 
-myclass = Simple(num_led=74, pause_value=3, num_steps_per_cycle=1, num_cycles=1)
+myclass = Simple(num_led=8, pause_value=3, num_steps_per_cycle=1, num_cycles=1)
 
 def functionCleanup(a,b):
   myclass.cleanup()
