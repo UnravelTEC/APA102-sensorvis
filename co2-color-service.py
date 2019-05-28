@@ -91,7 +91,7 @@ class Simple:
       red_threshold = 2500
       max_value = 3500
 
-      num_static = 2
+      num_static = 8
 
       # set first ones according to value
       for i in range(0, num_static):
