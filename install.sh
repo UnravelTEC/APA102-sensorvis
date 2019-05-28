@@ -19,7 +19,8 @@
 #
 # If you want to relicense this code under another license, please contact info+github@unraveltec.com.
 
-aptitude install python3-dev python3-pip python3-smbus python3-rpi.gpio python3-setuptools
+aptitude update
+aptitude install -y python3-dev python3-pip python3-smbus python3-rpi.gpio python3-setuptools
 
 (
   cd /tmp
@@ -46,3 +47,5 @@ rsync -raxc --info=name $serv1 /etc/systemd/system/
 
 systemctl enable $serv1 && echo "systemctl enable $serv1 OK"
 systemctl restart $serv1 && echo "systemctl restart $serv1 OK"
+
+echo "\nDon't forget to enable SPI!"
