@@ -15,10 +15,9 @@ When driving more than a few LEDs, use a strong 5V Power supply!
 
 - connect LED ground to one of the Raspberry ground pins
 - connect LEDs to 5V (either Raspberry or external)
-- Raspberry SPI MOSI -> Level Shifter -> LED Data
-- Raspberry SPI SCLK -> LED Clock to 
-
-SPI MISO (they don't talk back) and Chip Select (APA102 are always on) are not used.
+- connect Raspberry SPI MOSI -> Level Shifter -> LED Data
+- connect Raspberry SPI SCLK -> Level Shifter -> LED Clock
+- SPI MISO (they don't talk back)  and Chip Select (APA102 are always on) are not used.
 
 ## Software preparations
 
