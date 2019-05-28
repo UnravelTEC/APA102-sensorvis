@@ -36,4 +36,4 @@ The frequency is to be set in `driver/apa102.py`.
 
 ## TODOs
 
-* heller/dunkler wowo effekt, während der Daemon lauft damit man sieht dass er no aktiv is
+* fade in/fade out "wow" effect while the daemon is running to validate that it is active
