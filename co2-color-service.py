@@ -180,7 +180,7 @@ class Simple:
 
 #                    print(value)
 
-              time.sleep(1)
+              time.sleep(0.1)
 
         except KeyboardInterrupt:  # Ctrl-C can halt the light program
             print('Interrupted...')
