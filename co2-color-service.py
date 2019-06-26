@@ -112,7 +112,7 @@ class Simple:
       orange_led_start = math.ceil(orange_threshold / max_value * maxled)
       red_led_start = math.ceil(red_threshold / max_value * maxled)
 
-      print(how_many_leds_lit)
+      #print(how_many_leds_lit)
 
       for i in range(num_static, how_many_leds_lit):
         if i < yellow_led_start:
