@@ -28,7 +28,7 @@ import math
 valuefile = '/run/sensors/scd30/last'
 
 brightness = 10 # Percent
-timeout_s = 4
+timeout_s = 7
 
 class Simple:
         
