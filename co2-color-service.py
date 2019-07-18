@@ -29,6 +29,7 @@ valuefile = '/run/sensors/scd30/last'
 
 brightness = 10 # Percent
 timeout_s = 7
+timeout_s = 5
 
 class Simple:
         
