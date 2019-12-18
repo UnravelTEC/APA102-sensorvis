@@ -19,24 +19,28 @@
 #
 # If you want to relicense this code under another license, please contact info+github@unraveltec.com.
 
-aptitude update
-aptitude install -y python3-dev python3-pip python3-smbus python3-rpi.gpio python3-setuptools
-
-(
-  cd /tmp
-  wget https://github.com/adafruit/Adafruit_Python_GPIO/archive/master.zip
-  unzip master.zip
-  cd Adafruit_Python_GPIO-master
-  python3 ./setup.py install
-)
-
 targetdir=/usr/local/bin/
 
-mkdir -p $targetdir 
+if [ ! "$1" ]; then
+  aptitude update
+  aptitude install -y python3-dev python3-pip python3-smbus python3-rpi.gpio python3-setuptools
 
-if [ ! -f "/usr/local/lib/python3.5/dist-packages/driver/apa102.py" ]; then
-  pip3 install --upgrade .
+  (
+    cd /tmp
+    wget https://github.com/adafruit/Adafruit_Python_GPIO/archive/master.zip
+    unzip master.zip
+    cd Adafruit_Python_GPIO-master
+    python3 ./setup.py install
+  )
+  mkdir -p $targetdir 
 fi
+
+(
+  cd /usr/local/
+  if [ ! "$(find . -iname apa102.py)" ]; then
+    pip3 install --upgrade .
+  fi
+)
 
 exe1=co2-color-service.py
 serv1=co2-color.service
