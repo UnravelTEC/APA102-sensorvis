@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 
 # based on https://github.com/tinue/APA102_Pi, © tinue et.al.
 #
