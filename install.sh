@@ -36,8 +36,7 @@ if [ ! "$1" ]; then
 fi
 
 (
-  cd /usr/local/
-  if [ ! "$(find . -iname apa102.py)" ]; then
+  if [ ! "$(find /usr/local/ -iname apa102.py)" ]; then
     pip3 install --upgrade .
   fi
 )
