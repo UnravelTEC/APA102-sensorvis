@@ -1,0 +1,11 @@
+colors:
+  green: 0x00FF00
+  yellow: 0xFFAA00
+  orange: 0xFF3300
+  red: 0xFF0000
+
+thresholds:
+  green: 0
+  yellow: 30
+  orange: 50
+  red: 100

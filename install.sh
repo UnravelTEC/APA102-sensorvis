@@ -44,6 +44,15 @@ fi
 exe1=co2-color-service.py
 serv1=co2-color.service
 
+conffolder="/etc/lcars/"
+
+conffile="apa102.yml"
+
+if [ ! -e "$conffolder/$conffile" ]; then
+  mkdir -p "$conffolder"
+  cp "$conffile" "$conffolder"
+fi
+
 rsync -raxc --info=name $exe1 $targetdir
 
 rsync -raxc --info=name $serv1 /etc/systemd/system/
