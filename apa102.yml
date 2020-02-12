@@ -1,3 +1,10 @@
+# target value
+target:
+  measurement: particulate_matter
+  tags:
+    sensor: SPS30
+  value: p10_ugpm3
+
 colors:
   green: 0x00FF00
   yellow: 0xFFAA00

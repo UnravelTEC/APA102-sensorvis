@@ -50,6 +50,8 @@ cfg = {
     "address": 0,
     "busfreq": 400000,
     "brokerhost": "localhost",
+    "leds": 1,
+    "timeout_s": 3,
     "configfile": "/etc/lcars/" + name.lower() + ".yml"
     }
 
@@ -87,6 +89,10 @@ if os.path.isfile(args.configfile) and os.access(args.configfile, os.R_OK):
       if key in filecfg:
         cfg[key] = filecfg[key]
         print("used file setting", key, cfg[key])
+    for key in filecfg:
+      if not key in cfg:
+        cfg[key] = filecfg[key]
+        print("loaded file setting", key, cfg[key])
 else:
   print("no configfile found at", args.configfile)
 
@@ -105,12 +111,27 @@ DEBUG = args.debug
 
 hostname = os.uname()[1]
 
-# if SPI
+if not 'target' in cfg:
+  eprint('no target in cfg, exit')
+  exit(1)
+target = cfg['target']
+if not 'tags' in target or not 'sensor' in target['tags']:
+  eprint('no sensor in cfg, exit')
+  exit(1)
+if not 'measurement' in target or not 'value' in target:
+  eprint('no measurement or value in cfg, exit')
+  exit(1)
+
+sensor = target['tags']['sensor']
+measurement = target['measurement']
+valuekey = target['value']
+subscribe_topic = '/'.join([hostname, 'sensors', sensor, measurement]) 
+
 spi = spidev.SpiDev()
 DEBUG and print('after spi declare')
 spi.open(cfg['bus'], cfg['address'])
 DEBUG and print('after spi open')
-spi.max_speed_hz = 400000
+spi.max_speed_hz = cfg['busfreq']
 DEBUG and print('after spi hz')
 spi.mode = 1
 DEBUG and print('after spi mode')
@@ -119,6 +140,8 @@ brokerhost = cfg['brokerhost']
 def on_connect(client, userdata, flags, rc):
   try:
     print("Connected to MQTT broker "+brokerhost+" with result code "+str(rc))
+    client.subscribe(subscribe_topic)
+    print("subscribed to", subscribe_topic)
   except Exception as e:
     eprint('Exception', e)
 
@@ -142,7 +165,23 @@ def exit_hard():
 signal.signal(signal.SIGINT, exit_gracefully)
 signal.signal(signal.SIGTERM, exit_gracefully)
 
+leds = cfg['leds']
+timeout_s = cfg['timeout_s']
+
+def clock_start_frame():
+  spi.xfer([0] * 4)
+
 MEAS_INTERVAL = cfg['interval']
+
+def on_message(client, userdata, msg):
+  try:
+    DEBUG and print( msg.topic, msg.payload.decode())
+    topic_array = msg.topic.split('/')
+    payload_string = msg.payload.decode()
+    payload_json = json.loads(payload_string)
+  except Exception as e:
+    eprint(e)
+client.on_message = on_message
 
 n.notify("READY=1") #optional after initializing
 while True:
@@ -158,7 +197,7 @@ while True:
 
   DEBUG and print("duration of run: {:10.4f}s.".format(run_duration))
 
-  exit_gracefully() #rm in prod, only 4 test
+  # exit_gracefully() #rm in prod, only 4 test
 
   to_wait = MEAS_INTERVAL - run_duration
   if to_wait > 0:
