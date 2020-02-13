@@ -13,6 +13,7 @@ colors:
   yellow: 0xFFAA00
   orange: 0xFF3300
   red: 0xFF0000
+  blue: 0x0000FF
 
 thresholds:
   - 

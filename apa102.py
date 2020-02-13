@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-# If you want to relicense this code under another license, please contact info+github@unraveltec.com.
+# based on https://github.com/tinue/APA102_Pi
 
 import time
 import json
@@ -25,6 +25,8 @@ import sys
 import os, signal
 from subprocess import call
 import spidev
+
+from math import ceil
 
 from argparse import ArgumentParser, RawTextHelpFormatter
 import textwrap
@@ -55,7 +57,14 @@ cfg = {
     "leds": 1,
     "timeout_s": 3,
     "brightness": 100,
-    "configfile": "/etc/lcars/" + name.lower() + ".yml"
+    "configfile": "/etc/lcars/" + name.lower() + ".yml",
+    "colors": {
+        "green": 0x00FF00,
+        "yellow": 0xFFAA00,
+        "orange": 0xFF3300,
+        "red": 0xFF0000,
+        "blue": 0x0000FF
+      }
     }
 
 
@@ -161,12 +170,10 @@ client.connect(brokerhost,1883,60)
 client.on_connect = on_connect
 
 
-# client.loop_start() # needed when we have long time no msg
-
-
 def exit_gracefully(a=False,b=False):
   print("exit gracefully...")
   client.disconnect()
+  clearStrip()
   exit(0)
 
 def exit_hard():
@@ -175,12 +182,49 @@ def exit_hard():
 signal.signal(signal.SIGINT, exit_gracefully)
 signal.signal(signal.SIGTERM, exit_gracefully)
 
-leds = cfg['leds']
+nleds = cfg['leds']
 timeout_s = cfg['timeout_s']
 
-def clock_start_frame():
-  spi.xfer([0] * 4)
+MAX_BRIGHTNESS = 31 # Safeguard: Max. brightness that can be selected. 
+G_BN = cfg['brightness']
+LED_START = 0b11100000 # Three "1" bits, followed by 5 brightness bits
+LED_ARR = [LED_START,0,0,0] * nleds # Pixel buffer
 
+def setPixel(lednr, red, green, blue, bright_percent=100):
+  if lednr < 0 or lednr >= nleds:
+    return
+  brightness = int(ceil(bright_percent*G_BN/100.0))
+  ledstart = (brightness & 0b00011111) | LED_START
+  start_index = 4 * lednr
+  LED_ARR[start_index] = ledstart
+  LED_ARR[start_index + 3] = red
+  LED_ARR[start_index + 2] = green
+  LED_ARR[start_index + 1] = blue
+
+def show():
+  spi.xfer([0] * 4) # clock_start_frame
+  spi.xfer(list(LED_ARR)) # xfer2 kills the list, unfortunately. So it must be copied first
+  for _ in range((nleds + 15) // 16): # clock_end_frame
+    spi.xfer([0x00])
+
+def clearStrip():
+  for led in range(nleds):
+    setPixel(led,0,0,0,0)
+  show()
+
+def str2hexColor(strcolor):
+  colors = cfg['colors']
+  if not strcolor in colors:
+    eprint(strcolor, "not found in", colors)
+    return False
+  intcol = colors[strcolor]
+  return( (intcol & 0xFF0000) >> 16, (intcol & 0x00FF00) >> 8, intcol & 0x0000FF)
+
+def setAllColor(color):
+  (red, green, blue) = str2hexColor(color)
+  for led in range(nleds):
+    setPixel(led,red,green,blue,100)
+  show()
 
 def getColorFromThreshold(value):
   nt = len(thresholds)
@@ -230,6 +274,14 @@ error_colors = [ "red", "green", "blue" ]
 nr_err_col = len(error_colors)
 err_col_runner = 0
 
+setAllColor("red")
+time.sleep(0.33)
+setAllColor("green")
+time.sleep(0.33)
+setAllColor("blue")
+time.sleep(0.33)
+
+
 MEAS_INTERVAL = cfg['interval']
 def main():
   global err_col_runner
@@ -242,7 +294,8 @@ def main():
       err_col_runner += 1
       if err_col_runner == nr_err_col:
         err_col_runner = 0
-      print("setColor", c_err_col)
+      print("setColor", c_err_col, str2hexColor(c_err_col))
+      setAllColor(c_err_col)
 
     n.notify("WATCHDOG=1")
 
@@ -250,8 +303,6 @@ def main():
     run_duration = run_finished_at - run_started_at
 
     DEBUG and print("duration of run: {:10.4f}s.".format(run_duration))
-
-    # exit_gracefully() #rm in prod, only 4 test
 
     to_wait = MEAS_INTERVAL - run_duration
     if to_wait > 0:
