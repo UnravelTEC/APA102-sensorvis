@@ -49,7 +49,7 @@ def eprint(*args, **kwargs):
 
 name = "APA102" # Uppercase
 cfg = {
-    "interval": 1,
+    "interval": 0.3,
     "bus": 0,
     "address": 0,
     "busfreq": 400000,
@@ -235,7 +235,7 @@ def getColorFromThreshold(value):
       color = thresholds[i][1]
     else:
       break
-  print("new color:", color)
+  DEBUG and print("new color:", color)
   return(color)
 
 last_update = time.time()
@@ -260,7 +260,9 @@ def on_message(client, userdata, msg):
       print('value', valuekey, 'not found in msg values, ignoring')
       return
     v = values[valuekey]
-    print(valuekey, v, getColorFromThreshold(v))
+    textcolor = getColorFromThreshold(v)
+    # print(valuekey, v, getColorFromThreshold(v))
+    setAllColor(textcolor)
     last_update = time.time()
 
   except Exception as e:
