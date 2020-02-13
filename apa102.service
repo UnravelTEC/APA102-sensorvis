@@ -1,0 +1,17 @@
+[Unit]
+Description=APA102 smart LED driver
+After=mosquitto.service
+Requires=mosquitto.service
+
+
+[Service]
+User=root
+Restart=always
+Environment=PYTHONUNBUFFERED=true
+StartLimitInterval=60
+StartLimitBurst=3
+WatchdogSec=10
+ExecStart=/usr/local/bin/apa102.py
+
+[Install]
+WantedBy=multi-user.target

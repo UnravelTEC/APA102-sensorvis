@@ -61,7 +61,7 @@ cfg = {
 
 parser = ArgumentParser(description=name + ' driver.\n\nDefaults in {curly braces}',formatter_class=RawTextHelpFormatter)
 parser.add_argument("-i", "--interval", type=float, default=cfg['interval'],
-                            help="measurement interval in s (float, default "+str(cfg['interval'])+")", metavar="x")
+                            help="check interval in s (float, default "+str(cfg['interval'])+")", metavar="x")
 parser.add_argument("-D", "--debug", action='store_true', #cmdline arg only, not in config
                             help="print debug messages")
 
@@ -181,25 +181,22 @@ timeout_s = cfg['timeout_s']
 def clock_start_frame():
   spi.xfer([0] * 4)
 
-MEAS_INTERVAL = cfg['interval']
 
 def getColorFromThreshold(value):
   nt = len(thresholds)
-  # print(nt)
   color = ''
   for i in range(nt):
-    # print(i)
     ct = thresholds[i][0]
     if value >= ct:
       color = thresholds[i][1]
     else:
       break
+  print("new color:", color)
   return(color)
 
-
-getColorFromThreshold(99)
-
+last_update = time.time()
 def on_message(client, userdata, msg):
+  global last_update
   try:
     DEBUG and print( msg.topic, msg.payload.decode())
     topic_array = msg.topic.split('/')
@@ -220,7 +217,7 @@ def on_message(client, userdata, msg):
       return
     v = values[valuekey]
     print(valuekey, v, getColorFromThreshold(v))
-
+    last_update = time.time()
 
   except Exception as e:
     eprint(e)
@@ -229,12 +226,23 @@ def subscribing():
   client.on_message = on_message
   client.loop_forever()
 
+error_colors = [ "red", "green", "blue" ]
+nr_err_col = len(error_colors)
+err_col_runner = 0
+
+MEAS_INTERVAL = cfg['interval']
 def main():
+  global err_col_runner
   while True:
     run_started_at = time.time()
 
-
-    print("color:blue")
+    if last_update + timeout_s < run_started_at:
+      print("timeout!")
+      c_err_col = error_colors[err_col_runner]
+      err_col_runner += 1
+      if err_col_runner == nr_err_col:
+        err_col_runner = 0
+      print("setColor", c_err_col)
 
     n.notify("WATCHDOG=1")
 
