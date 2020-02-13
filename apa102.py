@@ -33,6 +33,8 @@ import pprint
 
 import sdnotify
 
+import threading
+
 def eprint(*args, **kwargs):
   print(*args, file=sys.stderr, **kwargs)
   sys.stderr.flush()
@@ -52,6 +54,7 @@ cfg = {
     "brokerhost": "localhost",
     "leds": 1,
     "timeout_s": 3,
+    "brightness": 100,
     "configfile": "/etc/lcars/" + name.lower() + ".yml"
     }
 
@@ -62,7 +65,6 @@ parser.add_argument("-i", "--interval", type=float, default=cfg['interval'],
 parser.add_argument("-D", "--debug", action='store_true', #cmdline arg only, not in config
                             help="print debug messages")
 
-# if using spi
 parser.add_argument("-b", "--bus", type=int, default=cfg['bus'], choices=[0,1,2,3,4,5,6],
                             help="spi bus # (/dev/spidev[0-6], {"+str(cfg['bus'])+"} )", metavar="n")
 parser.add_argument("-a", "--address", type=int, default=cfg['address'], choices=[0,1,2],
@@ -70,11 +72,9 @@ parser.add_argument("-a", "--address", type=int, default=cfg['address'], choices
 parser.add_argument("-s", "--busfreq", type=int, default=cfg['busfreq'],
                             help="bus frequenzy {"+str(cfg['busfreq'])+"} Hz", metavar="f")
 
-# if using MQTT
 parser.add_argument("-o", "--brokerhost", type=str, default=cfg['brokerhost'],
                             help="use mqtt broker (addr: {"+cfg['brokerhost']+"})", metavar="addr")
 
-# if using configfiles
 parser.add_argument("-c", "--configfile", type=str, default=cfg['configfile'],
                             help="load configfile ("+cfg['configfile']+")", metavar="nn")
 
@@ -122,10 +122,19 @@ if not 'measurement' in target or not 'value' in target:
   eprint('no measurement or value in cfg, exit')
   exit(1)
 
-sensor = target['tags']['sensor']
+if not 'thresholds' in cfg:
+  eprint('no thresholds in cfg, exit')
+  exit(1)
+
+tags = target['tags']
+sensor = tags['sensor']
+del tags['sensor'] # implied by topic, no need to store
 measurement = target['measurement']
 valuekey = target['value']
 subscribe_topic = '/'.join([hostname, 'sensors', sensor, measurement]) 
+print('subscribe to:', subscribe_topic)
+
+thresholds = cfg['thresholds']
 
 spi = spidev.SpiDev()
 DEBUG and print('after spi declare')
@@ -138,6 +147,7 @@ DEBUG and print('after spi mode')
 
 brokerhost = cfg['brokerhost']
 def on_connect(client, userdata, flags, rc):
+  print('on_connect')
   try:
     print("Connected to MQTT broker "+brokerhost+" with result code "+str(rc))
     client.subscribe(subscribe_topic)
@@ -173,35 +183,83 @@ def clock_start_frame():
 
 MEAS_INTERVAL = cfg['interval']
 
+def getColorFromThreshold(value):
+  nt = len(thresholds)
+  # print(nt)
+  color = ''
+  for i in range(nt):
+    # print(i)
+    ct = thresholds[i][0]
+    if value >= ct:
+      color = thresholds[i][1]
+    else:
+      break
+  return(color)
+
+
+getColorFromThreshold(99)
+
 def on_message(client, userdata, msg):
   try:
     DEBUG and print( msg.topic, msg.payload.decode())
     topic_array = msg.topic.split('/')
     payload_string = msg.payload.decode()
     payload_json = json.loads(payload_string)
+    # print("got", payload_json)
+    msgtags = payload_json['tags']
+    globaltags = tags
+    # print(msgtags, globaltags)
+    for key in globaltags:
+      # v = globaltags[key]
+      if not key in msgtags:
+        print('filter', key, 'not found in msg tags, ignoring')
+        return
+    values = payload_json['values']
+    if not valuekey in values:
+      print('value', valuekey, 'not found in msg values, ignoring')
+      return
+    v = values[valuekey]
+    print(valuekey, v, getColorFromThreshold(v))
+
+
   except Exception as e:
     eprint(e)
-client.on_message = on_message
+
+def subscribing():
+  client.on_message = on_message
+  client.loop_forever()
+
+def main():
+  while True:
+    run_started_at = time.time()
+
+
+    print("color:blue")
+
+    n.notify("WATCHDOG=1")
+
+    run_finished_at = time.time()
+    run_duration = run_finished_at - run_started_at
+
+    DEBUG and print("duration of run: {:10.4f}s.".format(run_duration))
+
+    # exit_gracefully() #rm in prod, only 4 test
+
+    to_wait = MEAS_INTERVAL - run_duration
+    if to_wait > 0:
+      DEBUG and print("wait for "+str(to_wait)+"s")
+      time.sleep(to_wait - 0.002)
+    else:
+      DEBUG and print("no wait, {0:4f}ms over".format(- to_wait*1000))
+
+sub=threading.Thread(target=subscribing)
+pub=threading.Thread(target=main)
+
+### Start MAIN ###
+
+sub.start()
+pub.start()
+
+print("started threads")
 
 n.notify("READY=1") #optional after initializing
-while True:
-  run_started_at = time.time()
-
-
-
-
-  n.notify("WATCHDOG=1")
-
-  run_finished_at = time.time()
-  run_duration = run_finished_at - run_started_at
-
-  DEBUG and print("duration of run: {:10.4f}s.".format(run_duration))
-
-  # exit_gracefully() #rm in prod, only 4 test
-
-  to_wait = MEAS_INTERVAL - run_duration
-  if to_wait > 0:
-    DEBUG and print("wait for "+str(to_wait)+"s")
-    time.sleep(to_wait - 0.002)
-  else:
-    DEBUG and print("no wait, {0:4f}ms over".format(- to_wait*1000))

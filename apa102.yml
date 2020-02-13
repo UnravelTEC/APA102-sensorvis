@@ -5,6 +5,9 @@ target:
     sensor: SPS30
   value: p10_ugpm3
 
+leds: 2
+timeout_s: 5
+
 colors:
   green: 0x00FF00
   yellow: 0xFFAA00
@@ -12,7 +15,15 @@ colors:
   red: 0xFF0000
 
 thresholds:
-  green: 0
-  yellow: 30
-  orange: 50
-  red: 100
+  - 
+    - 0
+    - green
+  - 
+    - 30
+    - yellow
+  - 
+    - 50
+    - orange
+  - 
+    - 100
+    - red
