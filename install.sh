@@ -22,27 +22,18 @@
 targetdir=/usr/local/bin/
 
 if [ ! "$1" ]; then
-  aptitude update
-  aptitude install -y python3-dev python3-pip python3-smbus python3-rpi.gpio python3-setuptools
+  last_update=$(stat -c %Y /var/cache/apt/pkgcache.bin)
+  now=$(date +%s)
+  if [ $((now - last_update)) -gt 86400 ]; then
+    aptitude update
+  fi
+  aptitude install -y python3-spidev python3-paho-mqtt mosquitto python3-yaml python3-sdnotify
 
-  (
-    cd /tmp
-    wget https://github.com/adafruit/Adafruit_Python_GPIO/archive/master.zip
-    unzip master.zip
-    cd Adafruit_Python_GPIO-master
-    python3 ./setup.py install
-  )
   mkdir -p $targetdir 
 fi
 
-(
-  if [ ! "$(find /usr/local/ -iname apa102.py)" ]; then
-    pip3 install --upgrade .
-  fi
-)
-
-exe1=co2-color-service.py
-serv1=co2-color.service
+exe1=apa102.py
+serv1=apa102.service
 
 conffolder="/etc/lcars/"
 
@@ -57,6 +48,7 @@ rsync -raxc --info=name $exe1 $targetdir
 
 rsync -raxc --info=name $serv1 /etc/systemd/system/
 
+systemctl daemon-reload
 systemctl enable $serv1 && echo "systemctl enable $serv1 OK"
 systemctl restart $serv1 && echo "systemctl restart $serv1 OK"
 

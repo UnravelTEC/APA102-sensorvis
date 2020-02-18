@@ -291,12 +291,12 @@ def main():
     run_started_at = time.time()
 
     if last_update + timeout_s < run_started_at:
-      print("timeout!")
+      DEBUG and print("timeout!")
       c_err_col = error_colors[err_col_runner]
       err_col_runner += 1
       if err_col_runner == nr_err_col:
         err_col_runner = 0
-      print("setColor", c_err_col, str2hexColor(c_err_col))
+      DEBUG and print("setColor", c_err_col, str2hexColor(c_err_col))
       setAllColor(c_err_col)
 
     n.notify("WATCHDOG=1")
