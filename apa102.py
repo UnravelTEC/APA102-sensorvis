@@ -141,7 +141,6 @@ del tags['sensor'] # implied by topic, no need to store
 measurement = target['measurement']
 valuekey = target['value']
 subscribe_topic = '/'.join([hostname, 'sensors', sensor, measurement]) 
-print('subscribe to:', subscribe_topic)
 
 thresholds = cfg['thresholds']
 
