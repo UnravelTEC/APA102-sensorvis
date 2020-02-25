@@ -166,8 +166,8 @@ def on_connect(client, userdata, flags, rc):
 
 import paho.mqtt.client as mqtt
 client = mqtt.Client(client_id=name, clean_session=True) # client id only useful if subscribing, but nice in logs # clean_session if you don't want to collect messages if daemon stops
-client.connect(brokerhost,1883,60)
 client.on_connect = on_connect
+client.connect(brokerhost,1883,60)
 
 
 def exit_gracefully(a=False,b=False):
