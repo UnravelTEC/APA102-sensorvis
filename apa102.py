@@ -269,8 +269,10 @@ skip = cfg['skip']
 def setAllColor(color):
   (red, green, blue) = str2hexColor(color)
   for led in range(nleds):
-    if led == 0 or led >= skip:
+    if led == 0 or led > skip:
       setPixel(led,red,green,blue,100)
+    else:
+      setPixel(led,0,0,0,0)
   show()
 
 def getColorFromThreshold(value):
