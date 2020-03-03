@@ -19,6 +19,10 @@
 #
 # based on https://github.com/tinue/APA102_Pi
 
+import sdnotify
+n = sdnotify.SystemdNotifier()
+n.notify("WATCHDOG=1")
+
 import time
 import json
 import sys
@@ -33,9 +37,9 @@ import textwrap
 
 import pprint
 
-import sdnotify
-
 import threading
+
+n.notify("WATCHDOG=1")
 
 def eprint(*args, **kwargs):
   print(*args, file=sys.stderr, **kwargs)
@@ -88,6 +92,7 @@ parser.add_argument("-c", "--configfile", type=str, default=cfg['configfile'],
                             help="load configfile ("+cfg['configfile']+")", metavar="nn")
 
 args = parser.parse_args()
+n.notify("WATCHDOG=1")
 
 if os.path.isfile(args.configfile) and os.access(args.configfile, os.R_OK):
   with open(args.configfile, 'r') as ymlfile:
@@ -112,9 +117,7 @@ for key in cfg:
     print('cmdline param', key, 'used with', argdict[key])
 
 print("config used:", cfg)
-
-
-n = sdnotify.SystemdNotifier()
+n.notify("WATCHDOG=1")
 
 DEBUG = args.debug
 
@@ -152,6 +155,7 @@ spi.max_speed_hz = cfg['busfreq']
 DEBUG and print('after spi hz')
 spi.mode = 1
 DEBUG and print('after spi mode')
+n.notify("WATCHDOG=1")
 
 brokerhost = cfg['brokerhost']
 def on_connect(client, userdata, flags, rc):
@@ -169,8 +173,14 @@ client.on_connect = on_connect
 client.connect(brokerhost,1883,60)
 
 
+RUNNING = True
 def exit_gracefully(a=False,b=False):
+  global RUNNING
   print("exit gracefully...")
+  RUNNING = False
+  print("waiting for threads... ", end='')
+  time.sleep(2)
+  print("finishing")
   client.disconnect()
   clearStrip()
   exit(0)
@@ -283,10 +293,11 @@ setAllColor("blue")
 time.sleep(0.33)
 
 
+n.notify("WATCHDOG=1")
 MEAS_INTERVAL = cfg['interval']
 def main():
   global err_col_runner
-  while True:
+  while RUNNING:
     run_started_at = time.time()
 
     if last_update + timeout_s < run_started_at:
@@ -311,6 +322,7 @@ def main():
       time.sleep(to_wait - 0.002)
     else:
       DEBUG and print("no wait, {0:4f}ms over".format(- to_wait*1000))
+  print("main thread finished")
 
 sub=threading.Thread(target=subscribing)
 pub=threading.Thread(target=main)
@@ -319,7 +331,10 @@ pub=threading.Thread(target=main)
 
 sub.start()
 pub.start()
+sub.join()
+pub.join()
 
 print("started threads")
 
 n.notify("READY=1") #optional after initializing
+n.notify("WATCHDOG=1")
