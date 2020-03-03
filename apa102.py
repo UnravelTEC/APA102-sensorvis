@@ -158,20 +158,55 @@ DEBUG and print('after spi mode')
 n.notify("WATCHDOG=1")
 
 brokerhost = cfg['brokerhost']
-def on_connect(client, userdata, flags, rc):
-  print('on_connect')
+def onConnect(client, userdata, flags, rc):
   try:
-    print("Connected to MQTT broker "+brokerhost+" with result code "+str(rc))
-    client.subscribe(subscribe_topic)
-    print("subscribed to", subscribe_topic)
+    if rc != 0:
+      eprint('mqtt: failure on connect to broker "'+ brokerhost+ '", result code:', str(rc))
+      if rc == 3:
+        eprint('mqtt: broker "'+ brokerhost+ '" unavailable')
+    else:
+      print("mqtt: Connected to broker", brokerhost, "with result code", str(rc))
+      client.subscribe(subscribe_topic)
+      print("mqtt: subscribing to", subscribe_topic)
+      return
   except Exception as e:
-    eprint('Exception', e)
+    eprint('mqtt: Exception in onConnect', e)
+  mqttConnect()
+
+def onDisconnect(client, userdata, rc):
+  if rc != 0:
+    print("mqtt: Unexpected disconnection.")
+    mqttReconnect()
+
+def mqttConnect():
+  while True:
+    try:
+      print("mqtt: Connecting to", brokerhost)
+      client.connect(brokerhost,1883,60)
+      print('mqtt: connect successful')
+      break
+    except Exception as e:
+      eprint('mqtt: Exception in client.connect to "' + brokerhost + '", E:', e)
+      print('mqtt: next connect attempt in 3s... ', end='')
+      time.sleep(3)
+      print('retry.')
+
+def mqttReconnect():
+  print('mqtt: attempting reconnect')
+  while True:
+    try:
+      client.reconnect()
+      print('mqtt: reconnect successful')
+      break
+    except ConnectionRefusedError as e:
+      eprint('mqtt: ConnectionRefusedError', e, '\nnext attempt in 3s')
+      time.sleep(3)
 
 import paho.mqtt.client as mqtt
 client = mqtt.Client(client_id=name, clean_session=True) # client id only useful if subscribing, but nice in logs # clean_session if you don't want to collect messages if daemon stops
-client.on_connect = on_connect
-client.connect(brokerhost,1883,60)
-
+client.on_connect = onConnect
+client.on_disconnect = onDisconnect
+mqttConnect()
 
 RUNNING = True
 def exit_gracefully(a=False,b=False):
