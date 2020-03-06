@@ -61,6 +61,7 @@ cfg = {
     "leds": 1,
     "timeout_s": 3,
     "brightness": 100,
+    "skip": 0, # for our 8-led boards, skip # after the 1st
     "configfile": "/etc/lcars/" + name.lower() + ".yml",
     "colors": {
         "green": 0x00FF00,
@@ -264,10 +265,14 @@ def str2hexColor(strcolor):
   intcol = colors[strcolor]
   return( (intcol & 0xFF0000) >> 16, (intcol & 0x00FF00) >> 8, intcol & 0x0000FF)
 
+skip = cfg['skip']
 def setAllColor(color):
   (red, green, blue) = str2hexColor(color)
   for led in range(nleds):
-    setPixel(led,red,green,blue,100)
+    if led == 0 or led > skip:
+      setPixel(led,red,green,blue,100)
+    else:
+      setPixel(led,0,0,0,0)
   show()
 
 def getColorFromThreshold(value):
