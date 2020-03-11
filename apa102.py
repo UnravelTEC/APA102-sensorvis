@@ -38,6 +38,7 @@ import textwrap
 import pprint
 
 import threading
+from copy import deepcopy
 
 n.notify("WATCHDOG=1")
 
@@ -61,6 +62,7 @@ cfg = {
     "leds": 1,
     "timeout_s": 3,
     "brightness": 100,
+    "fixed": 0,
     "skip": 0, # for our 8-led boards, skip # after the 1st
     "configfile": "/etc/lcars/" + name.lower() + ".yml",
     "colors": {
@@ -89,12 +91,17 @@ parser.add_argument("-s", "--busfreq", type=int, default=cfg['busfreq'],
 parser.add_argument("-o", "--brokerhost", type=str, default=cfg['brokerhost'],
                             help="use mqtt broker (addr: {"+cfg['brokerhost']+"})", metavar="addr")
 
+parser.add_argument("-f", "--fixed", type=int, default=cfg['fixed'],
+                            help="# of fixed leds, {"+str(cfg['fixed'])+"} )", metavar="n")
+
 parser.add_argument("-c", "--configfile", type=str, default=cfg['configfile'],
                             help="load configfile ("+cfg['configfile']+")", metavar="nn")
 
 args = parser.parse_args()
 n.notify("WATCHDOG=1")
+DEBUG = args.debug
 
+fcfg = deepcopy(cfg) # final config used
 if os.path.isfile(args.configfile) and os.access(args.configfile, os.R_OK):
   with open(args.configfile, 'r') as ymlfile:
     import yaml
@@ -102,25 +109,35 @@ if os.path.isfile(args.configfile) and os.access(args.configfile, os.R_OK):
     print("opened configfile", args.configfile)
     for key in cfg:
       if key in filecfg:
-        cfg[key] = filecfg[key]
-        print("used file setting", key, cfg[key])
+        value = filecfg[key]
+        fcfg[key] = value
+        print("used file setting", key, value)
     for key in filecfg:
       if not key in cfg:
-        cfg[key] = filecfg[key]
-        print("loaded file setting", key, cfg[key])
+        value = filecfg[key]
+        fcfg[key] = value
+        print("loaded file setting", key, value)
 else:
   print("no configfile found at", args.configfile)
+DEBUG and print('config from default & file', fcfg)
 
 argdict = vars(args)
 for key in cfg:
   if key in argdict and argdict[key] != cfg[key]:
-    cfg[key] = argdict[key]
-    print('cmdline param', key, 'used with', argdict[key])
+    value = argdict[key]
+    fcfg[key] = value
+    print('cmdline param', key, 'used with', value)
+
+cfg = fcfg
+required_params = ['brokerhost']
+for param in required_params:
+  if not param in cfg or not cfg[param]:
+    eprint('param', param, 'missing from config, exit')
+    exit(1)
 
 print("config used:", cfg)
 n.notify("WATCHDOG=1")
 
-DEBUG = args.debug
 
 hostname = os.uname()[1]
 
@@ -265,16 +282,6 @@ def str2hexColor(strcolor):
   intcol = colors[strcolor]
   return( (intcol & 0xFF0000) >> 16, (intcol & 0x00FF00) >> 8, intcol & 0x0000FF)
 
-skip = cfg['skip']
-def setAllColor(color):
-  (red, green, blue) = str2hexColor(color)
-  for led in range(nleds):
-    if led == 0 or led > skip:
-      setPixel(led,red,green,blue,100)
-    else:
-      setPixel(led,0,0,0,0)
-  show()
-
 def getColorFromThreshold(value):
   nt = len(thresholds)
   color = ''
@@ -286,6 +293,60 @@ def getColorFromThreshold(value):
       break
   DEBUG and print("new color:", color)
   return(color)
+
+skip = cfg['skip']
+def setAllColor(color):
+  (red, green, blue) = str2hexColor(color)
+  for led in range(nleds):
+    if led == 0 or led > skip:
+      setPixel(led,red,green,blue,100)
+    else:
+      setPixel(led,0,0,0,0)
+  show()
+
+max_value = cfg['maxvalue']
+strip_colors = [] # [(0,0,0xFF,100)] # r,g,b, brightness
+def preCalcStrip():
+  global strip_colors
+  fixed = cfg['fixed']
+  for led in range(fixed):
+    colors = (0,0,0xFF,100)
+    strip_colors.append(colors)
+    DEBUG and print(led, "fixed", strip_colors[led])
+
+  step = max_value / (nleds - fixed)
+  print("strip with", nleds - fixed, "LEDs, each corresponds to", step, "ppm.")
+  cstep = 0
+  for led in range(fixed, nleds):
+    cstep += step
+    colorstr = getColorFromThreshold(cstep)
+    (red, green, blue) = str2hexColor(colorstr)
+    strip_colors.append( (red, green, blue, G_BN) )
+    DEBUG and print(led, round(cstep), "ppm", strip_colors[led])
+
+preCalcStrip()
+
+def setBarLevel(value, brightness = 100):
+  fixed = cfg['fixed']
+  fixedcolorstr = getColorFromThreshold(value)
+  (fixr, fixg, fixb) = str2hexColor(fixedcolorstr)
+  for led in range(fixed):
+    setPixel(led, fixr, fixg, fixb, brightness)
+    print(led, (fixr, fixg, fixb))
+
+  how_many_leds_lit = ceil(value / max_value * (nleds-fixed))
+  print(how_many_leds_lit, "how_many_leds_lit at", value)
+  for led in range(fixed, how_many_leds_lit+fixed):
+    cled = strip_colors[led]
+    setPixel(led, cled[0], cled[1], cled[2], cled[3])
+    print(led, cled)
+  print("--------------------")
+
+  for led in range(how_many_leds_lit+fixed, nleds):
+    setPixel(led, 0,0,0,0)
+
+  show()
+
 
 last_update = time.time()
 def on_message(client, userdata, msg):
@@ -311,7 +372,8 @@ def on_message(client, userdata, msg):
     v = values[valuekey]
     textcolor = getColorFromThreshold(v)
     # print(valuekey, v, getColorFromThreshold(v))
-    setAllColor(textcolor)
+  #    setAllColor(textcolor)
+    setBarLevel(v)
     last_update = time.time()
 
   except Exception as e:
