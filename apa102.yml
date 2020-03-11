@@ -6,6 +6,7 @@ target:
   value: CO2_ppm
 
 leds: 2
+skip: 0
 timeout_s: 5
 brightness: 100
 
