@@ -327,6 +327,9 @@ def preCalcStrip():
 preCalcStrip()
 
 def setBarLevel(value, brightness = 100):
+  if value > max_value:
+    value = max_value
+
   fixed = cfg['fixed']
   fixedcolorstr = getColorFromThreshold(value)
   (fixr, fixg, fixb) = str2hexColor(fixedcolorstr)
