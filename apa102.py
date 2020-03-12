@@ -332,15 +332,15 @@ def setBarLevel(value, brightness = 100):
   (fixr, fixg, fixb) = str2hexColor(fixedcolorstr)
   for led in range(fixed):
     setPixel(led, fixr, fixg, fixb, brightness)
-    print(led, (fixr, fixg, fixb))
+    DEBUG and print(led, (fixr, fixg, fixb))
 
   how_many_leds_lit = ceil(value / max_value * (nleds-fixed))
-  print(how_many_leds_lit, "how_many_leds_lit at", value)
+  DEBUG and print(how_many_leds_lit, "how_many_leds_lit at", value)
   for led in range(fixed, how_many_leds_lit+fixed):
     cled = strip_colors[led]
     setPixel(led, cled[0], cled[1], cled[2], cled[3])
-    print(led, cled)
-  print("--------------------")
+    DEBUG and print(led, cled)
+  DEBUG and print("--------------------")
 
   for led in range(how_many_leds_lit+fixed, nleds):
     setPixel(led, 0,0,0,0)
