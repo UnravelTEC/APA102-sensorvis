@@ -444,6 +444,8 @@ def main():
 sub=threading.Thread(target=subscribing)
 pub=threading.Thread(target=main)
 
+call ("/usr/local/bin/spidev_test -N", shell=True) #disable SPI0-CS
+
 ### Start MAIN ###
 
 sub.start()
