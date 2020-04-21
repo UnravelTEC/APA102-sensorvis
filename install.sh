@@ -44,6 +44,12 @@ if [ ! -e "$conffolder/$conffile" ]; then
   cp "$conffile" "$conffolder"
 fi
 
+cd spidev-test/
+gcc spidev_test.c -o spidev_test
+rsync -raxc --info=name spidev_test $targetdir
+cd ..
+
+
 rsync -raxc --info=name $exe1 $targetdir
 
 rsync -raxc --info=name $serv1 /etc/systemd/system/
@@ -52,4 +58,5 @@ systemctl daemon-reload
 systemctl enable $serv1 && echo "systemctl enable $serv1 OK"
 systemctl restart $serv1 && echo "systemctl restart $serv1 OK"
 
-echo "\nDon't forget to enable SPI!"
+echo
+echo "Don't forget to enable SPI!"
