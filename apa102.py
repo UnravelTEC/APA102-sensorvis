@@ -402,17 +402,29 @@ n.notify("WATCHDOG=1")
 MEAS_INTERVAL = cfg['interval']
 def main():
   global err_col_runner
+  write_log_every = 50
+  write_log_counter = 0
+  running_in_error_mode = False
   while RUNNING:
     run_started_at = time.time()
 
     if last_update + timeout_s < run_started_at:
-      DEBUG and print("timeout!")
+      if write_log_counter == 0:
+        print("Apa102 timeout, running error color wheel")
+        write_log_counter = write_log_every
+      write_log_counter -= 1
+
       c_err_col = error_colors[err_col_runner]
       err_col_runner += 1
       if err_col_runner == nr_err_col:
         err_col_runner = 0
       DEBUG and print("setColor", c_err_col, str2hexColor(c_err_col))
       setAllColor(c_err_col)
+      running_in_error_mode = True
+    else:
+      if running_in_error_mode == True:
+        print("Apa102 timeout over")
+        running_in_error_mode = False
 
     n.notify("WATCHDOG=1")
 
