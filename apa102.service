@@ -10,7 +10,7 @@ Restart=always
 Environment=PYTHONUNBUFFERED=true
 StartLimitInterval=60
 StartLimitBurst=3
-WatchdogSec=10
+WatchdogSec=30
 ExecStart=/usr/local/bin/apa102.py
 
 [Install]
