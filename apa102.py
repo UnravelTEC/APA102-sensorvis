@@ -248,20 +248,28 @@ nleds = cfg['leds']
 timeout_s = cfg['timeout_s']
 
 MAX_BRIGHTNESS = 31 # Safeguard: Max. brightness that can be selected. 
-G_BN = cfg['brightness']
+MAX_BRIGHTNESS = 10 # Safeguard: Max. brightness that can be selected. 
+G_BN = ceil(cfg['brightness']/100)
 LED_START = 0b11100000 # Three "1" bits, followed by 5 brightness bits
 LED_ARR = [LED_START,0,0,0] * nleds # Pixel buffer
 
 def setPixel(lednr, red, green, blue, bright_percent=100):
   if lednr < 0 or lednr >= nleds:
     return
-  brightness = int(ceil(bright_percent*G_BN/100.0))
-  ledstart = (brightness & 0b00011111) | LED_START
+  brightness = int(ceil(bright_percent*G_BN/100*MAX_BRIGHTNESS))
+  if bright_percent < 10:
+    factor = bright_percent / 10
+    red = ceil(red * factor)
+    green = ceil(green * factor)
+    blue = ceil(blue * factor)
+  bn_bin = brightness & 0b00011111
+  ledstart = bn_bin | LED_START
   start_index = 4 * lednr
   LED_ARR[start_index] = ledstart
   LED_ARR[start_index + 3] = red
   LED_ARR[start_index + 2] = green
   LED_ARR[start_index + 1] = blue
+  DEBUG and print(bn_bin, bin(bn_bin), red, green, blue)
 
 def show():
   spi.xfer([0] * 4) # clock_start_frame
@@ -321,7 +329,7 @@ def preCalcStrip():
     cstep += step
     colorstr = getColorFromThreshold(cstep)
     (red, green, blue) = str2hexColor(colorstr)
-    strip_colors.append( (red, green, blue, G_BN) )
+    strip_colors.append( (red, green, blue, G_BN*100) )
     DEBUG and print(led, round(cstep), "ppm", strip_colors[led])
 
 preCalcStrip()
@@ -346,7 +354,8 @@ def setBarLevel(value, brightness = 100):
   DEBUG and print("--------------------")
 
   for led in range(how_many_leds_lit+fixed, nleds):
-    setPixel(led, 0,0,0,0)
+    cled = strip_colors[led]
+    setPixel(led, cled[0], cled[1], cled[2], 1)
 
   show()
 
