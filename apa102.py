@@ -152,7 +152,7 @@ if not 'measurement' in target or not 'value' in target:
   eprint('no measurement or value in cfg, exit')
   exit(1)
 
-if not 'thresholds' in cfg:
+if not 'thresholds' in cfg or not 'thresholds_single' in cfg:
   eprint('no thresholds in cfg, exit')
   exit(1)
 
@@ -164,6 +164,7 @@ valuekey = target['value']
 subscribe_topic = '/'.join([hostname, 'sensors', sensor, measurement]) 
 
 thresholds = cfg['thresholds']
+thresholds_single = cfg['thresholds_single']
 
 spi = spidev.SpiDev()
 DEBUG and print('after spi declare')
@@ -312,17 +313,15 @@ def preCalcStrip():
   for led in range(fixed):
     colors = (0,0,0xFF,100)
     strip_colors.append(colors)
-    DEBUG and print(led, "fixed", strip_colors[led])
+    DEBUG and print("#", led, "fixed", strip_colors[led])
 
-  step = max_value / (nleds - fixed)
-  print("strip with", nleds - fixed, "LEDs, each corresponds to", step, "ppm.")
-  cstep = 0
-  for led in range(fixed, nleds):
-    cstep += step
-    colorstr = getColorFromThreshold(cstep)
+  print("strip with", nleds , "LEDs, ", fixed, "fixed.")
+  for led in range(len(thresholds_single)):
+    this_led_min_val = thresholds_single[led]
+    colorstr = getColorFromThreshold(this_led_min_val)
     (red, green, blue) = str2hexColor(colorstr)
     strip_colors.append( (red, green, blue, G_BN) )
-    DEBUG and print(led, round(cstep), "ppm", strip_colors[led])
+    DEBUG and print(fixed + led, strip_colors[fixed + led])
 
 preCalcStrip()
 
@@ -335,18 +334,20 @@ def setBarLevel(value, brightness = 100):
   (fixr, fixg, fixb) = str2hexColor(fixedcolorstr)
   for led in range(fixed):
     setPixel(led, fixr, fixg, fixb, brightness)
-    DEBUG and print(led, (fixr, fixg, fixb))
+    DEBUG and print(led, (fixr, fixg, fixb, brightness))
 
-  how_many_leds_lit = ceil(value / max_value * (nleds-fixed))
-  DEBUG and print(how_many_leds_lit, "how_many_leds_lit at", value)
-  for led in range(fixed, how_many_leds_lit+fixed):
-    cled = strip_colors[led]
-    setPixel(led, cled[0], cled[1], cled[2], cled[3])
-    DEBUG and print(led, cled)
+  nr_led = fixed -1
+  for led_threshold in thresholds_single:
+    nr_led += 1
+    DEBUG and print(nr_led, led_threshold)
+    if value > led_threshold:
+      cled = strip_colors[nr_led]
+      setPixel(nr_led, cled[0], cled[1], cled[2], cled[3])
+      DEBUG and print(nr_led, cled)
+    else:
+      setPixel(nr_led, 0,0,0,0)
+      DEBUG and print(nr_led, 0,0,0,0)
   DEBUG and print("--------------------")
-
-  for led in range(how_many_leds_lit+fixed, nleds):
-    setPixel(led, 0,0,0,0)
 
   show()
 
@@ -373,7 +374,7 @@ def on_message(client, userdata, msg):
       print('value', valuekey, 'not found in msg values, ignoring')
       return
     v = values[valuekey]
-    textcolor = getColorFromThreshold(v)
+    # textcolor = getColorFromThreshold(v)
     # print(valuekey, v, getColorFromThreshold(v))
   #    setAllColor(textcolor)
     setBarLevel(v)
