@@ -325,6 +325,7 @@ def preCalcStrip():
 
 preCalcStrip()
 
+ledcfg = cfg['ledcfg']
 def setBarLevel(value, brightness = 100):
   if value > max_value:
     value = max_value
@@ -337,6 +338,28 @@ def setBarLevel(value, brightness = 100):
     DEBUG and print(led, (fixr, fixg, fixb, brightness))
 
   nr_led = fixed -1
+
+  for step in ledcfg:
+    nr_led = fixed -1
+    if value > step['from']:
+      DEBUG and print(step)
+      led_a = step['leds']
+      defined_leds = len(led_a)
+      for led_i in led_a:
+        nr_led += 1
+        color = led_i['c']
+        (red, green, blue) = str2hexColor(color)
+        bn = led_i['bn'] if 'bn' in led_i else 1
+        # todo calc bn by rgb/bn
+        setPixel(nr_led, red, green, blue)
+        DEBUG and print(nr_led, red, green, blue)
+      for i in range(defined_leds+1, nleds):
+        setPixel(i, 0,0,0,0)
+
+  DEBUG and print("--------------------")
+  show()
+  return
+
   for led_threshold in thresholds_single:
     nr_led += 1
     DEBUG and print(nr_led, led_threshold)
@@ -432,11 +455,11 @@ def main():
     run_finished_at = time.time()
     run_duration = run_finished_at - run_started_at
 
-    DEBUG and print("duration of run: {:10.4f}s.".format(run_duration))
+    # DEBUG and print("duration of run: {:10.4f}s.".format(run_duration))
 
     to_wait = MEAS_INTERVAL - run_duration
     if to_wait > 0:
-      DEBUG and print("wait for "+str(to_wait)+"s")
+      # DEBUG and print("wait for "+str(to_wait)+"s")
       time.sleep(to_wait - 0.002)
     else:
       DEBUG and print("no wait, {0:4f}ms over".format(- to_wait*1000))
