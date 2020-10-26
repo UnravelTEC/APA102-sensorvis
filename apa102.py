@@ -281,6 +281,8 @@ def str2hexColor(strcolor):
     eprint(strcolor, "not found in", colors)
     return False
   intcol = colors[strcolor]
+  if DEBUG:
+    return(1 if  ((intcol & 0xFF0000) >> 16) > 0 else 0, 1 if ((intcol & 0x00FF00) >> 8) > 0 else 0, 1 if (intcol & 0x0000FF) > 0 else 0)
   return( (intcol & 0xFF0000) >> 16, (intcol & 0x00FF00) >> 8, intcol & 0x0000FF)
 
 def getColorFromThreshold(value):
