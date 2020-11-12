@@ -112,3 +112,24 @@ ledcfg:
 # 2000 - 2500 2orange 
 # 2500 - 3000 1 rot
 # 3000 + 2 rot
+
+# soll
+# 0-500 g1
+# 500-800 2g
+# 800- 1100 1y
+# 1100 - 1400 2y
+# 1400 - 2000 1orange 
+# 2000 - 2500 2orange 
+# 2500 - 3000 1 rot
+# 3000 + 2 rot
+
+# laut ÖNORM EN 13779 (2008)
+#    Hoch: bis 800ppm
+#    Mittel: bis 1000ppm
+#    Mäßig: bis 1400ppm
+#    Niedrig: ab 1400ppm
+# g bis 800
+# y1 bis 1000
+# y2 bos 1400
+# o1 ab 1400
+
