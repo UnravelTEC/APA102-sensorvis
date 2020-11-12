@@ -1,7 +1,5 @@
 [Unit]
 Description=APA102 smart LED driver
-After=mosquitto.service
-Requires=mosquitto.service
 StartLimitIntervalSec=0
 
 [Service]

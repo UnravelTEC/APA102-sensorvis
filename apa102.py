@@ -24,20 +24,13 @@ n = sdnotify.SystemdNotifier()
 n.notify("WATCHDOG=1")
 
 import time
-import json
 import sys
 import os, signal
-from subprocess import call
+# from subprocess import call
 import spidev
 
 from math import ceil
 
-from argparse import ArgumentParser, RawTextHelpFormatter
-import textwrap
-
-import pprint
-
-import threading
 from copy import deepcopy
 
 n.notify("WATCHDOG=1")
@@ -46,19 +39,12 @@ def eprint(*args, **kwargs):
   print(*args, file=sys.stderr, **kwargs)
   sys.stderr.flush()
 
-# config order (later overwrites newer)
-# 1. default cfg
-# 2. config file
-# 3. cmdline args
-# 4. runtime cfg via MQTT $host/sensors/$name/config
-
 name = "APA102" # Uppercase
 cfg = {
     "interval": 0.3,
     "bus": 0,
     "address": 0,
     "busfreq": 400000,
-    "brokerhost": "localhost",
     "leds": 1,
     "timeout_s": 3,
     "brightness": 100,
@@ -71,45 +57,19 @@ cfg = {
         "orange": 0xFF3300,
         "red": 0xFF0000,
         "blue": 0x0000FF
-      }
+      },
+    "valuefile": '/run/sensors/scd30/last'
     }
 
-
-parser = ArgumentParser(description=name + ' driver.\n\nDefaults in {curly braces}',formatter_class=RawTextHelpFormatter)
-parser.add_argument("-i", "--interval", type=float, default=cfg['interval'],
-                            help="check interval in s (float, default "+str(cfg['interval'])+")", metavar="x")
-parser.add_argument("-D", "--debug", action='store_true', #cmdline arg only, not in config
-                            help="print debug messages")
-
-parser.add_argument("-b", "--bus", type=int, default=cfg['bus'], choices=[0,1,2,3,4,5,6],
-                            help="spi bus # (/dev/spidev[0-6], {"+str(cfg['bus'])+"} )", metavar="n")
-parser.add_argument("-a", "--address", type=int, default=cfg['address'], choices=[0,1,2],
-                            help="spi cs line 0-2 {"+str(cfg['address'])+"}", metavar="i")
-parser.add_argument("-s", "--busfreq", type=int, default=cfg['busfreq'],
-                            help="bus frequenzy {"+str(cfg['busfreq'])+"} Hz", metavar="f")
-
-parser.add_argument("-o", "--brokerhost", type=str, default=cfg['brokerhost'],
-                            help="use mqtt broker (addr: {"+cfg['brokerhost']+"})", metavar="addr")
-
-parser.add_argument("-f", "--fixed", type=int, default=cfg['fixed'],
-                            help="# of fixed leds, {"+str(cfg['fixed'])+"} )", metavar="n")
-
-parser.add_argument("-B", "--brightness", type=float, default=cfg['brightness'],
-                            help="LED brightness in percent, {"+str(cfg['brightness'])+"} )", metavar="f")
-
-parser.add_argument("-c", "--configfile", type=str, default=cfg['configfile'],
-                            help="load configfile ("+cfg['configfile']+")", metavar="nn")
-
-args = parser.parse_args()
 n.notify("WATCHDOG=1")
-DEBUG = args.debug
+DEBUG = False
 
 fcfg = deepcopy(cfg) # final config used
-if os.path.isfile(args.configfile) and os.access(args.configfile, os.R_OK):
-  with open(args.configfile, 'r') as ymlfile:
+if os.path.isfile(cfg['configfile']) and os.access(cfg['configfile'], os.R_OK):
+  with open(cfg['configfile'], 'r') as ymlfile:
     import yaml
     filecfg = yaml.load(ymlfile)
-    print("opened configfile", args.configfile)
+    print("opened configfile", cfg['configfile'])
     for key in cfg:
       if key in filecfg:
         value = filecfg[key]
@@ -124,23 +84,11 @@ else:
   print("no configfile found at", args.configfile)
 DEBUG and print('config from default & file', fcfg)
 
-argdict = vars(args)
-for key in cfg:
-  if key in argdict and argdict[key] != cfg[key]:
-    value = argdict[key]
-    fcfg[key] = value
-    print('cmdline param', key, 'used with', value)
 
 cfg = fcfg
-required_params = ['brokerhost']
-for param in required_params:
-  if not param in cfg or not cfg[param]:
-    eprint('param', param, 'missing from config, exit')
-    exit(1)
 
 print("config used:", cfg)
 n.notify("WATCHDOG=1")
-
 
 hostname = os.uname()[1]
 
@@ -164,7 +112,6 @@ sensor = tags['sensor']
 del tags['sensor'] # implied by topic, no need to store
 measurement = target['measurement']
 valuekey = target['value']
-subscribe_topic = '/'.join([hostname, 'sensors', sensor, measurement]) 
 
 thresholds = cfg['thresholds']
 thresholds_single = cfg['thresholds_single']
@@ -179,57 +126,6 @@ spi.mode = 1
 DEBUG and print('after spi mode')
 n.notify("WATCHDOG=1")
 
-brokerhost = cfg['brokerhost']
-def onConnect(client, userdata, flags, rc):
-  try:
-    if rc != 0:
-      eprint('mqtt: failure on connect to broker "'+ brokerhost+ '", result code:', str(rc))
-      if rc == 3:
-        eprint('mqtt: broker "'+ brokerhost+ '" unavailable')
-    else:
-      print("mqtt: Connected to broker", brokerhost, "with result code", str(rc))
-      client.subscribe(subscribe_topic)
-      print("mqtt: subscribing to", subscribe_topic)
-      return
-  except Exception as e:
-    eprint('mqtt: Exception in onConnect', e)
-  mqttConnect()
-
-def onDisconnect(client, userdata, rc):
-  if rc != 0:
-    print("mqtt: Unexpected disconnection.")
-    mqttReconnect()
-
-def mqttConnect():
-  while True:
-    try:
-      print("mqtt: Connecting to", brokerhost)
-      client.connect(brokerhost,1883,60)
-      print('mqtt: connect successful')
-      break
-    except Exception as e:
-      eprint('mqtt: Exception in client.connect to "' + brokerhost + '", E:', e)
-      print('mqtt: next connect attempt in 3s... ', end='')
-      time.sleep(3)
-      print('retry.')
-
-def mqttReconnect():
-  print('mqtt: attempting reconnect')
-  while True:
-    try:
-      client.reconnect()
-      print('mqtt: reconnect successful')
-      break
-    except ConnectionRefusedError as e:
-      eprint('mqtt: ConnectionRefusedError', e, '\nnext attempt in 3s')
-      time.sleep(3)
-
-import paho.mqtt.client as mqtt
-client = mqtt.Client(client_id=name, clean_session=True) # client id only useful if subscribing, but nice in logs # clean_session if you don't want to collect messages if daemon stops
-client.on_connect = onConnect
-client.on_disconnect = onDisconnect
-mqttConnect()
-
 RUNNING = True
 def exit_gracefully(a=False,b=False):
   global RUNNING
@@ -238,7 +134,6 @@ def exit_gracefully(a=False,b=False):
   print("waiting for threads... ", end='')
   time.sleep(2)
   print("finishing")
-  client.disconnect()
   clearStrip()
   exit(0)
 
@@ -383,39 +278,6 @@ def setBarLevel(value, brightness = G_BN):
 
 
 last_update = time.time()
-def on_message(client, userdata, msg):
-  global last_update
-  try:
-    DEBUG and print( msg.topic, msg.payload.decode())
-    topic_array = msg.topic.split('/')
-    payload_string = msg.payload.decode()
-    payload_json = json.loads(payload_string)
-    # print("got", payload_json)
-    msgtags = payload_json['tags']
-    globaltags = tags
-    # print(msgtags, globaltags)
-    for key in globaltags:
-      # v = globaltags[key]
-      if not key in msgtags:
-        print('filter', key, 'not found in msg tags, ignoring')
-        return
-    values = payload_json['values']
-    if not valuekey in values:
-      print('value', valuekey, 'not found in msg values, ignoring')
-      return
-    v = values[valuekey]
-    # textcolor = getColorFromThreshold(v)
-    # print(valuekey, v, getColorFromThreshold(v))
-  #    setAllColor(textcolor)
-    setBarLevel(v)
-    last_update = time.time()
-
-  except Exception as e:
-    eprint(e)
-
-def subscribing():
-  client.on_message = on_message
-  client.loop_forever()
 
 error_colors = [ "red", "green", "blue" ]
 nr_err_col = len(error_colors)
@@ -428,16 +290,39 @@ time.sleep(0.33)
 setAllColor("blue")
 time.sleep(0.33)
 
+vfile = cfg['valuefile']
+
 
 n.notify("WATCHDOG=1")
 MEAS_INTERVAL = cfg['interval']
 def main():
   global err_col_runner
+  lastmodtime = 0
   write_log_every = 50
   write_log_counter = 0
   running_in_error_mode = False
   while RUNNING:
     run_started_at = time.time()
+
+    if os.path.isfile(vfile):
+      currentmodtime = os.path.getmtime(vfile)
+      if currentmodtime > lastmodtime:
+        lastmodtime = currentmodtime
+        current_file = open(vfile, 'r')
+        for line in current_file:
+          # print(line)
+          line_array = line.split()
+          if len(line_array) > 1:
+            if len(line_array) == 2:
+              metric = line_array[0]
+              float_val = float(line_array[1])
+            DEBUG and print(metric, float_val)
+            if isinstance(float_val,float) and metric.startswith('gas_ppm'):
+              setBarLevel(float_val)
+              last_update = time.time()
+              break
+      else:
+        DEBUG and print('wait for file update')
 
     if last_update + timeout_s < run_started_at:
       if write_log_counter == 0:
@@ -472,19 +357,10 @@ def main():
       DEBUG and print("no wait, {0:4f}ms over".format(- to_wait*1000))
   print("main thread finished")
 
-sub=threading.Thread(target=subscribing)
-pub=threading.Thread(target=main)
+main()
 
-call ("/usr/local/bin/spidev_test -N", shell=True) #disable SPI0-CS
+# call ("/usr/local/bin/spidev_test -N", shell=True) #disable SPI0-CS
 
-### Start MAIN ###
-
-sub.start()
-pub.start()
-sub.join()
-pub.join()
-
-print("started threads")
 
 n.notify("READY=1") #optional after initializing
 n.notify("WATCHDOG=1")
