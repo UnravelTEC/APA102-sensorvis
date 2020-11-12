@@ -256,7 +256,7 @@ G_BN = cfg['brightness']
 LED_START = 0b11100000 # Three "1" bits, followed by 5 brightness bits
 LED_ARR = [LED_START,0,0,0] * nleds # Pixel buffer
 
-def setPixel(lednr, red, green, blue, bright_percent=100):
+def setPixel(lednr, red, green, blue, bright_percent=G_BN):
   bn_float = bright_percent / 100
   if lednr < 0 or lednr >= nleds:
     return
@@ -331,7 +331,7 @@ def preCalcStrip():
 
 preCalcStrip()
 
-def setBarLevel(value, brightness = 100):
+def setBarLevel(value, brightness = G_BN):
   if value > max_value:
     value = max_value
 
