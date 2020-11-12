@@ -94,6 +94,9 @@ parser.add_argument("-o", "--brokerhost", type=str, default=cfg['brokerhost'],
 parser.add_argument("-f", "--fixed", type=int, default=cfg['fixed'],
                             help="# of fixed leds, {"+str(cfg['fixed'])+"} )", metavar="n")
 
+parser.add_argument("-B", "--brightness", type=float, default=cfg['brightness'],
+                            help="LED brightness in percent, {"+str(cfg['brightness'])+"} )", metavar="f")
+
 parser.add_argument("-c", "--configfile", type=str, default=cfg['configfile'],
                             help="load configfile ("+cfg['configfile']+")", metavar="nn")
 
@@ -268,7 +271,7 @@ def setPixel(lednr, red, green, blue, bright_percent=100):
 def show():
   spi.xfer([0] * 4) # clock_start_frame
   spi.xfer(list(LED_ARR)) # xfer2 kills the list, unfortunately. So it must be copied first
-  spi.xfer([0xFF] * 4 # end frame
+  spi.xfer([0xFF] * 4) # end frame
   # for _ in range((nleds + 15) // 16): # clock_end_frame
 
 def clearStrip():
@@ -282,8 +285,8 @@ def str2hexColor(strcolor):
     eprint(strcolor, "not found in", colors)
     return False
   intcol = colors[strcolor]
-  if DEBUG:
-    return(1 if  ((intcol & 0xFF0000) >> 16) > 0 else 0, 1 if ((intcol & 0x00FF00) >> 8) > 0 else 0, 1 if (intcol & 0x0000FF) > 0 else 0)
+#  if DEBUG:
+#    return(1 if  ((intcol & 0xFF0000) >> 16) > 0 else 0, 1 if ((intcol & 0x00FF00) >> 8) > 0 else 0, 1 if (intcol & 0x0000FF) > 0 else 0)
   return( (intcol & 0xFF0000) >> 16, (intcol & 0x00FF00) >> 8, intcol & 0x0000FF)
 
 def getColorFromThreshold(value):
@@ -303,7 +306,7 @@ def setAllColor(color):
   (red, green, blue) = str2hexColor(color)
   for led in range(nleds):
     if led == 0 or led > skip:
-      setPixel(led,red,green,blue,100)
+      setPixel(led,red,green,blue,G_BN)
     else:
       setPixel(led,0,0,0,0)
   show()
