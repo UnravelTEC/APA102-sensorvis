@@ -254,22 +254,22 @@ LED_START = 0b11100000 # Three "1" bits, followed by 5 brightness bits
 LED_ARR = [LED_START,0,0,0] * nleds # Pixel buffer
 
 def setPixel(lednr, red, green, blue, bright_percent=100):
+  bn_float = bright_percent / 100
   if lednr < 0 or lednr >= nleds:
     return
-  brightness = int(ceil(bright_percent*G_BN/100.0))
-  ledstart = (brightness & 0b00011111) | LED_START
+  ledstart = 0xFF # full global brightness
   start_index = 4 * lednr
   LED_ARR[start_index] = ledstart
-  LED_ARR[start_index + 3] = red
-  LED_ARR[start_index + 2] = green
-  LED_ARR[start_index + 1] = blue
+  LED_ARR[start_index + 3] = ceil(red * bn_float) 
+  LED_ARR[start_index + 2] = ceil(green * bn_float)
+  LED_ARR[start_index + 1] = ceil(blue * bn_float)
   DEBUG and print(lednr, ":", hex(LED_ARR[start_index]) , hex(LED_ARR[start_index + 1]), hex(LED_ARR[start_index + 2]), hex(LED_ARR[start_index + 3]))
 
 def show():
   spi.xfer([0] * 4) # clock_start_frame
   spi.xfer(list(LED_ARR)) # xfer2 kills the list, unfortunately. So it must be copied first
-  for _ in range((nleds + 15) // 16): # clock_end_frame
-    spi.xfer([0x00])
+  spi.xfer([0xFF] * 4 # end frame
+  # for _ in range((nleds + 15) // 16): # clock_end_frame
 
 def clearStrip():
   for led in range(nleds):
@@ -328,7 +328,6 @@ def preCalcStrip():
 
 preCalcStrip()
 
-ledcfg = cfg['ledcfg']
 def setBarLevel(value, brightness = 100):
   if value > max_value:
     value = max_value
@@ -342,26 +341,28 @@ def setBarLevel(value, brightness = 100):
 
   nr_led = fixed -1
 
-  for step in ledcfg:
-    nr_led = fixed -1
-    if value > step['from']:
-      DEBUG and print(step)
-      led_a = step['leds']
-      defined_leds = len(led_a)
-      for led_i in led_a:
-        nr_led += 1
-        color = led_i['c']
-        (red, green, blue) = str2hexColor(color)
-        bn = led_i['bn'] if 'bn' in led_i else 1
-        # todo calc bn by rgb/bn
-        setPixel(nr_led, red, green, blue)
-        DEBUG and print(nr_led, red, green, blue)
-      for i in range(defined_leds+1, nleds):
-        setPixel(i, 0,0,0,0)
+  if 'ledcfg' in cfg:
+    ledcfg = cfg['ledcfg']
+    for step in ledcfg:
+      nr_led = fixed -1
+      if value > step['from']:
+        DEBUG and print(step)
+        led_a = step['leds']
+        defined_leds = len(led_a)
+        for led_i in led_a:
+          nr_led += 1
+          color = led_i['c']
+          (red, green, blue) = str2hexColor(color)
+          bn = led_i['bn'] if 'bn' in led_i else 1
+          # todo calc bn by rgb/bn
+          setPixel(nr_led, red, green, blue)
+          DEBUG and print(nr_led, red, green, blue)
+        for i in range(defined_leds+1, nleds):
+          setPixel(i, 0,0,0,0)
 
-  DEBUG and print("--------------------")
-  show()
-  return
+    DEBUG and print("--------------------")
+    show()
+    return
 
   for led_threshold in thresholds_single:
     nr_led += 1
