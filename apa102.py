@@ -296,7 +296,7 @@ vfile = cfg['valuefile']
 n.notify("WATCHDOG=1")
 MEAS_INTERVAL = cfg['interval']
 def main():
-  global err_col_runner
+  global err_col_runner, last_update
   lastmodtime = 0
   write_log_every = 50
   write_log_counter = 0
