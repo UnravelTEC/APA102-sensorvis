@@ -122,7 +122,7 @@ spi.open(cfg['bus'], cfg['address'])
 DEBUG and print('after spi open')
 spi.max_speed_hz = cfg['busfreq']
 DEBUG and print('after spi hz')
-spi.mode = 1
+spi.mode = 3
 DEBUG and print('after spi mode')
 n.notify("WATCHDOG=1")
 
