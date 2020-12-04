@@ -65,11 +65,12 @@ n.notify("WATCHDOG=1")
 DEBUG = False
 
 fcfg = deepcopy(cfg) # final config used
-if os.path.isfile(cfg['configfile']) and os.access(cfg['configfile'], os.R_OK):
-  with open(cfg['configfile'], 'r') as ymlfile:
+CFGFILE = cfg['configfile']
+if os.path.isfile(CFGFILE) and os.access(CFGFILE, os.R_OK):
+  with open(CFGFILE, 'r') as ymlfile:
     import yaml
     filecfg = yaml.load(ymlfile)
-    print("opened configfile", cfg['configfile'])
+    print("opened configfile", CFGFILE)
     for key in cfg:
       if key in filecfg:
         value = filecfg[key]
@@ -227,6 +228,14 @@ def preCalcStrip():
 preCalcStrip()
 
 def setBarLevel(value, brightness = G_BN):
+  global G_BN
+  with open(CFGFILE, 'r') as ymlfile:
+    filecfg = yaml.load(ymlfile)
+    newbn = filecfg['brightness']
+    newbn != G_BN and print('new bn:', newbn)
+    G_BN = newbn
+    brightness = G_BN
+
   if value > max_value:
     value = max_value
 
@@ -252,8 +261,7 @@ def setBarLevel(value, brightness = G_BN):
           color = led_i['c']
           (red, green, blue) = str2hexColor(color)
           bn = led_i['bn'] if 'bn' in led_i else 1
-          # todo calc bn by rgb/bn
-          setPixel(nr_led, red, green, blue)
+          setPixel(nr_led, red, green, blue, brightness)
           DEBUG and print(nr_led, red, green, blue)
         for i in range(defined_leds+1, nleds):
           setPixel(i, 0,0,0,0)
@@ -267,7 +275,7 @@ def setBarLevel(value, brightness = G_BN):
     DEBUG and print(nr_led, led_threshold)
     if value > led_threshold:
       cled = strip_colors[nr_led]
-      setPixel(nr_led, cled[0], cled[1], cled[2], cled[3])
+      setPixel(nr_led, cled[0], cled[1], cled[2], brightness)
       DEBUG and print(nr_led, cled)
     else:
       setPixel(nr_led, 0,0,0,0)
