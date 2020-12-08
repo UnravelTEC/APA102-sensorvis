@@ -58,7 +58,8 @@ cfg = {
         "red": 0xFF0000,
         "blue": 0x0000FF
       },
-    "valuefile": '/run/sensors/scd30/last'
+    "valuefile": '/run/sensors/scd30/last',
+    "buttonstatefile": '/var/run/button.state'
     }
 
 n.notify("WATCHDOG=1")
@@ -92,6 +93,7 @@ print("config used:", cfg)
 n.notify("WATCHDOG=1")
 
 hostname = os.uname()[1]
+BUTTONFILE = cfg['buttonstatefile']
 
 if not 'target' in cfg:
   eprint('no target in cfg, exit')
@@ -326,7 +328,8 @@ def main():
               float_val = float(line_array[1])
             DEBUG and print(metric, float_val)
             if isinstance(float_val,float) and metric.startswith('gas_ppm'):
-              setBarLevel(float_val)
+              if not os.path.isfile(BUTTONFILE):
+                setBarLevel(float_val)
               last_update = time.time()
               break
       else:
