@@ -361,7 +361,7 @@ def main():
     # DEBUG and print("duration of run: {:10.4f}s.".format(run_duration))
 
     to_wait = MEAS_INTERVAL - run_duration
-    if to_wait > 0:
+    if to_wait > 0.002:
       # DEBUG and print("wait for "+str(to_wait)+"s")
       time.sleep(to_wait - 0.002)
     else:
