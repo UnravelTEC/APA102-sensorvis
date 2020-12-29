@@ -161,9 +161,9 @@ def setPixel(lednr, red, green, blue, bright_percent=G_BN):
   ledstart = 0xFF # full global brightness
   start_index = 4 * lednr
   LED_ARR[start_index] = ledstart
-  LED_ARR[start_index + 3] = ceil(red * bn_float) 
-  LED_ARR[start_index + 2] = ceil(green * bn_float)
-  LED_ARR[start_index + 1] = ceil(blue * bn_float)
+  LED_ARR[start_index + 1] = ceil(red * bn_float) 
+  LED_ARR[start_index + 2] = ceil(blue * bn_float)
+  LED_ARR[start_index + 3] = ceil(green * bn_float)
   DEBUG and print(lednr, ":", hex(LED_ARR[start_index]) , hex(LED_ARR[start_index + 1]), hex(LED_ARR[start_index + 2]), hex(LED_ARR[start_index + 3]))
 
 def show():
