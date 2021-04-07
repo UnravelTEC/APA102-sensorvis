@@ -141,31 +141,6 @@ n.notify("WATCHDOG=1")
 
 hostname = os.uname()[1]
 
-if not 'target' in cfg:
-  eprint('no target in cfg, exit')
-  exit(1)
-target = cfg['target']
-if not 'tags' in target or not 'sensor' in target['tags']:
-  eprint('no sensor in cfg, exit')
-  exit(1)
-if not 'measurement' in target or not 'value' in target:
-  eprint('no measurement or value in cfg, exit')
-  exit(1)
-
-if not 'thresholds' in cfg or not 'thresholds_single' in cfg:
-  eprint('no thresholds in cfg, exit')
-  exit(1)
-
-tags = target['tags']
-sensor = tags['sensor']
-del tags['sensor'] # implied by topic, no need to store
-measurement = target['measurement']
-valuekey = target['value']
-subscribe_topic = '/'.join([hostname, 'sensors', sensor, measurement]) 
-
-thresholds = cfg['thresholds']
-thresholds_single = cfg['thresholds_single']
-
 spi = spidev.SpiDev()
 DEBUG and print('after spi declare')
 spi.open(cfg['bus'], cfg['address'])
@@ -185,8 +160,10 @@ def onConnect(client, userdata, flags, rc):
         eprint('mqtt: broker "'+ brokerhost+ '" unavailable')
     else:
       print("mqtt: Connected to broker", brokerhost, "with result code", str(rc))
-      client.subscribe(subscribe_topic)
-      print("mqtt: subscribing to", subscribe_topic)
+      client.subscribe('/'.join([hostname, 'sensors/GPS/location',)
+      print("mqtt: subscribing to GPS")
+      client.subscribe('/'.join([hostname, 'sensors/STROMPI/system',)
+      print("mqtt: subscribing to Strompi")
       return
   except Exception as e:
     eprint('mqtt: Exception in onConnect', e)
@@ -384,19 +361,29 @@ def on_message(client, userdata, msg):
   try:
     DEBUG and print( msg.topic, msg.payload.decode())
     topic_array = msg.topic.split('/')
+    sensor = topic_array[2]
+    if not sensor in ['GPS','STROMPI']:
+      return
     payload_string = msg.payload.decode()
     payload_json = json.loads(payload_string)
     # print("got", payload_json)
     msgtags = payload_json['tags']
-    globaltags = tags
-    # print(msgtags, globaltags)
+    values = payload_json['values']
+
+    if sensor == 'GPS':
+      valuekey = 'hdop'
+      if not valuekey in values:
+        return
+      if hdop == 99:
+        (red, green, blue) = str2hexColor('red')
+        setPixel(1, red, green, blue)
+
+
     for key in globaltags:
       # v = globaltags[key]
       if not key in msgtags:
         print('filter', key, 'not found in msg tags, ignoring')
         return
-    values = payload_json['values']
-    if not valuekey in values:
       print('value', valuekey, 'not found in msg values, ignoring')
       return
     v = values[valuekey]

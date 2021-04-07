@@ -1,16 +1,9 @@
 # target value
-target:
-  measurement: gas
-  tags:
-    sensor: SCD30
-  value: CO2_ppm
-
 busfreq: 100000
-leds: 56
+leds: 2
 skip: 0
-fixed: 8 # nr leds before strip
 timeout_s: 5
-brightness: 100
+brightness: 20
 
 colors:
   green: 0x00FF00
