@@ -54,7 +54,7 @@ def eprint(*args, **kwargs):
 
 name = "APA102" # Uppercase
 cfg = {
-    "interval": 0.3,
+    "interval": 1.0,
     "bus": 0,
     "address": 0,
     "busfreq": 400000,
@@ -160,9 +160,9 @@ def onConnect(client, userdata, flags, rc):
         eprint('mqtt: broker "'+ brokerhost+ '" unavailable')
     else:
       print("mqtt: Connected to broker", brokerhost, "with result code", str(rc))
-      client.subscribe('/'.join([hostname, 'sensors/GPS/location',)
+      client.subscribe('/'.join([hostname, 'sensors/GPS/location']))
       print("mqtt: subscribing to GPS")
-      client.subscribe('/'.join([hostname, 'sensors/STROMPI/system',)
+      client.subscribe('/'.join([hostname, 'sensors/STROMPI/system']))
       print("mqtt: subscribing to Strompi")
       return
   except Exception as e:
@@ -285,79 +285,13 @@ def setAllColor(color):
       setPixel(led,0,0,0,0)
   show()
 
-max_value = cfg['maxvalue']
-strip_colors = [] # [(0,0,0xFF,100)] # r,g,b, brightness
-def preCalcStrip():
-  global strip_colors
-  fixed = cfg['fixed']
-  for led in range(fixed):
-    colors = (0,0,0xFF,100)
-    strip_colors.append(colors)
-    DEBUG and print("#", led, "fixed", strip_colors[led])
-
-  print("strip with", nleds , "LEDs, ", fixed, "fixed.")
-  for led in range(len(thresholds_single)):
-    this_led_min_val = thresholds_single[led]
-    colorstr = getColorFromThreshold(this_led_min_val)
-    (red, green, blue) = str2hexColor(colorstr)
-    strip_colors.append( (red, green, blue, G_BN) )
-    DEBUG and print(fixed + led, strip_colors[fixed + led])
-
-preCalcStrip()
-
-ledcfg = cfg['ledcfg']
-def setBarLevel(value, brightness = 100):
-  if value > max_value:
-    value = max_value
-
-  fixed = cfg['fixed']
-  fixedcolorstr = getColorFromThreshold(value)
-  (fixr, fixg, fixb) = str2hexColor(fixedcolorstr)
-  for led in range(fixed):
-    setPixel(led, fixr, fixg, fixb, brightness)
-    DEBUG and print(led, (fixr, fixg, fixb, brightness))
-
-  nr_led = fixed -1
-
-  for step in ledcfg:
-    nr_led = fixed -1
-    if value > step['from']:
-      DEBUG and print(step)
-      led_a = step['leds']
-      defined_leds = len(led_a)
-      for led_i in led_a:
-        nr_led += 1
-        color = led_i['c']
-        (red, green, blue) = str2hexColor(color)
-        bn = led_i['bn'] if 'bn' in led_i else 1
-        # todo calc bn by rgb/bn
-        setPixel(nr_led, red, green, blue)
-        DEBUG and print(nr_led, red, green, blue)
-      for i in range(defined_leds+1, nleds):
-        setPixel(i, 0,0,0,0)
-
-  DEBUG and print("--------------------")
-  show()
-  return
-
-  for led_threshold in thresholds_single:
-    nr_led += 1
-    DEBUG and print(nr_led, led_threshold)
-    if value > led_threshold:
-      cled = strip_colors[nr_led]
-      setPixel(nr_led, cled[0], cled[1], cled[2], cled[3])
-      DEBUG and print(nr_led, cled)
-    else:
-      setPixel(nr_led, 0,0,0,0)
-      DEBUG and print(nr_led, 0,0,0,0)
-  DEBUG and print("--------------------")
-
-  show()
-
+led1color = 'violet'
+led2color = 'violet'
+charging = 0
 
 last_update = time.time()
 def on_message(client, userdata, msg):
-  global last_update
+  global last_update, led1color, led2color, charging
   try:
     DEBUG and print( msg.topic, msg.payload.decode())
     topic_array = msg.topic.split('/')
@@ -374,23 +308,34 @@ def on_message(client, userdata, msg):
       valuekey = 'hdop'
       if not valuekey in values:
         return
+      hdop = values[valuekey]
       if hdop == 99:
-        (red, green, blue) = str2hexColor('red')
-        setPixel(1, red, green, blue)
-
-
-    for key in globaltags:
-      # v = globaltags[key]
-      if not key in msgtags:
-        print('filter', key, 'not found in msg tags, ignoring')
+        led1color = 'red'
+      elif hdop > 10:
+        led1color = 'orange'
+      elif hdop > 3:
+        led1color = 'yellow'
+      elif hdop > 0:
+        led1color = 'green'
+    else: # STROMPI
+      valuekey = 'sp3_batLevel'
+      if not valuekey in values:
         return
-      print('value', valuekey, 'not found in msg values, ignoring')
-      return
-    v = values[valuekey]
-    # textcolor = getColorFromThreshold(v)
-    # print(valuekey, v, getColorFromThreshold(v))
-  #    setAllColor(textcolor)
-    setBarLevel(v)
+      batlvl = values[valuekey]
+      if batlvl == 4:
+        led2color = 'green'
+      if batlvl == 3:
+        led2color = 'yellow'
+      if batlvl == 2:
+        led2color = 'orange'
+      if batlvl == 1:
+        led2color = 'red'
+      if batlvl == 0:
+        led2color = 'blue'
+
+      if 'sp3_charging' in values:
+        charging = values['sp3_charging']
+
     last_update = time.time()
 
   except Exception as e:
@@ -440,6 +385,16 @@ def main():
         print("Apa102 timeout over")
         running_in_error_mode = False
 
+      (red, green, blue) = str2hexColor(led1color)
+      setPixel(0, red, green, blue)
+      (red, green, blue) = str2hexColor(led2color)
+      setPixel(1, red, green, blue)
+      show()
+      if charging:
+        time.sleep(0.5)
+        setPixel(1, red, green, blue, 0.2)
+        show()
+
     n.notify("WATCHDOG=1")
 
     run_finished_at = time.time()
@@ -458,7 +413,7 @@ def main():
 sub=threading.Thread(target=subscribing)
 pub=threading.Thread(target=main)
 
-call ("/usr/local/bin/spidev_test -N", shell=True) #disable SPI0-CS
+# call ("/usr/local/bin/spidev_test -N", shell=True) #disable SPI0-CS
 
 ### Start MAIN ###
 

@@ -11,20 +11,4 @@ colors:
   orange: 0xFF3300
   red: 0xFF0000
   blue: 0x0000FF
-  max: 0x8E44AD # violet
-
-thresholds:
-  - 
-    - 0
-    - green
-  - 
-    - 800
-    - yellow
-  - 
-    - 1500
-    - orange
-  - 
-    - 2500
-    - red
-
-maxvalue: 4000
+  violet: 0x8E44AD
