@@ -147,7 +147,7 @@ spi.open(cfg['bus'], cfg['address'])
 DEBUG and print('after spi open')
 spi.max_speed_hz = cfg['busfreq']
 DEBUG and print('after spi hz')
-spi.mode = 1
+spi.mode = 3
 DEBUG and print('after spi mode')
 n.notify("WATCHDOG=1")
 
@@ -230,23 +230,24 @@ G_BN = cfg['brightness']
 LED_START = 0b11100000 # Three "1" bits, followed by 5 brightness bits
 LED_ARR = [LED_START,0,0,0] * nleds # Pixel buffer
 
-def setPixel(lednr, red, green, blue, bright_percent=100):
+def setPixel(lednr, red, green, blue, bright_percent=G_BN):
   if lednr < 0 or lednr >= nleds:
     return
+  bn_float = bright_percent / 100
   brightness = int(ceil(bright_percent*G_BN/100.0))
-  ledstart = (brightness & 0b00011111) | LED_START
+  ledstart = 0xFF
   start_index = 4 * lednr
   LED_ARR[start_index] = ledstart
-  LED_ARR[start_index + 3] = red
-  LED_ARR[start_index + 2] = green
-  LED_ARR[start_index + 1] = blue
+  LED_ARR[start_index + 3] = ceil(red * bn_float)
+  LED_ARR[start_index + 2] = ceil(green * bn_float)
+  LED_ARR[start_index + 1] = ceil(blue * bn_float)
   DEBUG and print(lednr, ":", hex(LED_ARR[start_index]) , hex(LED_ARR[start_index + 1]), hex(LED_ARR[start_index + 2]), hex(LED_ARR[start_index + 3]))
 
 def show():
   spi.xfer([0] * 4) # clock_start_frame
   spi.xfer(list(LED_ARR)) # xfer2 kills the list, unfortunately. So it must be copied first
-  for _ in range((nleds + 15) // 16): # clock_end_frame
-    spi.xfer([0x00])
+  spi.xfer([0xFF] * 4) # end frame
+  # for _ in range((nleds + 15) // 16): # clock_end_frame
 
 def clearStrip():
   for led in range(nleds):
@@ -280,7 +281,7 @@ def setAllColor(color):
   (red, green, blue) = str2hexColor(color)
   for led in range(nleds):
     if led == 0 or led > skip:
-      setPixel(led,red,green,blue,100)
+      setPixel(led,red,green,blue,G_BN)
     else:
       setPixel(led,0,0,0,0)
   show()
@@ -403,7 +404,7 @@ def main():
     # DEBUG and print("duration of run: {:10.4f}s.".format(run_duration))
 
     to_wait = MEAS_INTERVAL - run_duration
-    if to_wait > 0:
+    if to_wait > 0.002:
       # DEBUG and print("wait for "+str(to_wait)+"s")
       time.sleep(to_wait - 0.002)
     else:
