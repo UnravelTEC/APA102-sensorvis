@@ -313,7 +313,7 @@ def on_message(client, userdata, msg):
       if not valuekey in values:
         return
       hdop = values[valuekey]
-      if hdop == 99:
+      if hdop > 40:
         led1color = 'red'
       elif hdop > 10:
         led1color = 'orange'
