@@ -71,7 +71,8 @@ cfg = {
         "orange": 0xFF3300,
         "red": 0xFF0000,
         "blue": 0x0000FF
-      }
+      },
+    "buttonstatefile": '/var/run/button.state'
     }
 
 
@@ -140,6 +141,7 @@ n.notify("WATCHDOG=1")
 
 
 hostname = os.uname()[1]
+BUTTONFILE = cfg['buttonstatefile']
 
 spi = spidev.SpiDev()
 DEBUG and print('after spi declare')
@@ -244,10 +246,11 @@ def setPixel(lednr, red, green, blue, bright_percent=G_BN):
   DEBUG and print(lednr, ":", hex(LED_ARR[start_index]) , hex(LED_ARR[start_index + 1]), hex(LED_ARR[start_index + 2]), hex(LED_ARR[start_index + 3]))
 
 def show():
-  spi.xfer([0] * 4) # clock_start_frame
-  spi.xfer(list(LED_ARR)) # xfer2 kills the list, unfortunately. So it must be copied first
-  spi.xfer([0xFF] * 4) # end frame
-  # for _ in range((nleds + 15) // 16): # clock_end_frame
+  if not os.path.isfile(BUTTONFILE):
+    spi.xfer([0] * 4) # clock_start_frame
+    spi.xfer(list(LED_ARR)) # xfer2 kills the list, unfortunately. So it must be copied first
+    spi.xfer([0xFF] * 4) # end frame
+    # for _ in range((nleds + 15) // 16): # clock_end_frame
 
 def clearStrip():
   for led in range(nleds):
