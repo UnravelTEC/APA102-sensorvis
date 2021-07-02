@@ -38,7 +38,6 @@ import textwrap
 import pprint
 
 import threading
-from copy import deepcopy
 
 n.notify("WATCHDOG=1")
 
@@ -62,8 +61,6 @@ cfg = {
     "leds": 1,
     "timeout_s": 3,
     "brightness": 100,
-    "fixed": 0,
-    "skip": 0, # for our 8-led boards, skip # after the 1st
     "configfile": "/etc/lcars/" + name.lower() + ".yml",
     "colors": {
         "green": 0x00FF00,
@@ -91,17 +88,12 @@ parser.add_argument("-s", "--busfreq", type=int, default=cfg['busfreq'],
 parser.add_argument("-o", "--brokerhost", type=str, default=cfg['brokerhost'],
                             help="use mqtt broker (addr: {"+cfg['brokerhost']+"})", metavar="addr")
 
-parser.add_argument("-f", "--fixed", type=int, default=cfg['fixed'],
-                            help="# of fixed leds, {"+str(cfg['fixed'])+"} )", metavar="n")
-
 parser.add_argument("-c", "--configfile", type=str, default=cfg['configfile'],
                             help="load configfile ("+cfg['configfile']+")", metavar="nn")
 
 args = parser.parse_args()
 n.notify("WATCHDOG=1")
-DEBUG = args.debug
 
-fcfg = deepcopy(cfg) # final config used
 if os.path.isfile(args.configfile) and os.access(args.configfile, os.R_OK):
   with open(args.configfile, 'r') as ymlfile:
     import yaml
@@ -109,35 +101,25 @@ if os.path.isfile(args.configfile) and os.access(args.configfile, os.R_OK):
     print("opened configfile", args.configfile)
     for key in cfg:
       if key in filecfg:
-        value = filecfg[key]
-        fcfg[key] = value
-        print("used file setting", key, value)
+        cfg[key] = filecfg[key]
+        print("used file setting", key, cfg[key])
     for key in filecfg:
       if not key in cfg:
-        value = filecfg[key]
-        fcfg[key] = value
-        print("loaded file setting", key, value)
+        cfg[key] = filecfg[key]
+        print("loaded file setting", key, cfg[key])
 else:
   print("no configfile found at", args.configfile)
-DEBUG and print('config from default & file', fcfg)
 
 argdict = vars(args)
 for key in cfg:
   if key in argdict and argdict[key] != cfg[key]:
-    value = argdict[key]
-    fcfg[key] = value
-    print('cmdline param', key, 'used with', value)
-
-cfg = fcfg
-required_params = ['brokerhost']
-for param in required_params:
-  if not param in cfg or not cfg[param]:
-    eprint('param', param, 'missing from config, exit')
-    exit(1)
+    cfg[key] = argdict[key]
+    print('cmdline param', key, 'used with', argdict[key])
 
 print("config used:", cfg)
 n.notify("WATCHDOG=1")
 
+DEBUG = args.debug
 
 hostname = os.uname()[1]
 
@@ -152,7 +134,7 @@ if not 'measurement' in target or not 'value' in target:
   eprint('no measurement or value in cfg, exit')
   exit(1)
 
-if not 'thresholds' in cfg or not 'thresholds_single' in cfg:
+if not 'thresholds' in cfg:
   eprint('no thresholds in cfg, exit')
   exit(1)
 
@@ -164,7 +146,6 @@ valuekey = target['value']
 subscribe_topic = '/'.join([hostname, 'sensors', sensor, measurement]) 
 
 thresholds = cfg['thresholds']
-thresholds_single = cfg['thresholds_single']
 
 spi = spidev.SpiDev()
 DEBUG and print('after spi declare')
@@ -263,7 +244,6 @@ def setPixel(lednr, red, green, blue, bright_percent=100):
   LED_ARR[start_index + 3] = red
   LED_ARR[start_index + 2] = green
   LED_ARR[start_index + 1] = blue
-  DEBUG and print(lednr, ":", hex(LED_ARR[start_index]) , hex(LED_ARR[start_index + 1]), hex(LED_ARR[start_index + 2]), hex(LED_ARR[start_index + 3]))
 
 def show():
   spi.xfer([0] * 4) # clock_start_frame
@@ -282,9 +262,13 @@ def str2hexColor(strcolor):
     eprint(strcolor, "not found in", colors)
     return False
   intcol = colors[strcolor]
-  if DEBUG:
-    return(1 if  ((intcol & 0xFF0000) >> 16) > 0 else 0, 1 if ((intcol & 0x00FF00) >> 8) > 0 else 0, 1 if (intcol & 0x0000FF) > 0 else 0)
   return( (intcol & 0xFF0000) >> 16, (intcol & 0x00FF00) >> 8, intcol & 0x0000FF)
+
+def setAllColor(color):
+  (red, green, blue) = str2hexColor(color)
+  for led in range(nleds):
+    setPixel(led,red,green,blue,100)
+  show()
 
 def getColorFromThreshold(value):
   nt = len(thresholds)
@@ -297,86 +281,6 @@ def getColorFromThreshold(value):
       break
   DEBUG and print("new color:", color)
   return(color)
-
-skip = cfg['skip']
-def setAllColor(color):
-  (red, green, blue) = str2hexColor(color)
-  for led in range(nleds):
-    if led == 0 or led > skip:
-      setPixel(led,red,green,blue,100)
-    else:
-      setPixel(led,0,0,0,0)
-  show()
-
-max_value = cfg['maxvalue']
-strip_colors = [] # [(0,0,0xFF,100)] # r,g,b, brightness
-def preCalcStrip():
-  global strip_colors
-  fixed = cfg['fixed']
-  for led in range(fixed):
-    colors = (0,0,0xFF,100)
-    strip_colors.append(colors)
-    DEBUG and print("#", led, "fixed", strip_colors[led])
-
-  print("strip with", nleds , "LEDs, ", fixed, "fixed.")
-  for led in range(len(thresholds_single)):
-    this_led_min_val = thresholds_single[led]
-    colorstr = getColorFromThreshold(this_led_min_val)
-    (red, green, blue) = str2hexColor(colorstr)
-    strip_colors.append( (red, green, blue, G_BN) )
-    DEBUG and print(fixed + led, strip_colors[fixed + led])
-
-preCalcStrip()
-
-ledcfg = cfg['ledcfg']
-def setBarLevel(value, brightness = 100):
-  if value > max_value:
-    value = max_value
-
-  fixed = cfg['fixed']
-  fixedcolorstr = getColorFromThreshold(value)
-  (fixr, fixg, fixb) = str2hexColor(fixedcolorstr)
-  for led in range(fixed):
-    setPixel(led, fixr, fixg, fixb, brightness)
-    DEBUG and print(led, (fixr, fixg, fixb, brightness))
-
-  nr_led = fixed -1
-
-  for step in ledcfg:
-    nr_led = fixed -1
-    if value > step['from']:
-      DEBUG and print(step)
-      led_a = step['leds']
-      defined_leds = len(led_a)
-      for led_i in led_a:
-        nr_led += 1
-        color = led_i['c']
-        (red, green, blue) = str2hexColor(color)
-        bn = led_i['bn'] if 'bn' in led_i else 1
-        # todo calc bn by rgb/bn
-        setPixel(nr_led, red, green, blue)
-        DEBUG and print(nr_led, red, green, blue)
-      for i in range(defined_leds+1, nleds):
-        setPixel(i, 0,0,0,0)
-
-  DEBUG and print("--------------------")
-  show()
-  return
-
-  for led_threshold in thresholds_single:
-    nr_led += 1
-    DEBUG and print(nr_led, led_threshold)
-    if value > led_threshold:
-      cled = strip_colors[nr_led]
-      setPixel(nr_led, cled[0], cled[1], cled[2], cled[3])
-      DEBUG and print(nr_led, cled)
-    else:
-      setPixel(nr_led, 0,0,0,0)
-      DEBUG and print(nr_led, 0,0,0,0)
-  DEBUG and print("--------------------")
-
-  show()
-
 
 last_update = time.time()
 def on_message(client, userdata, msg):
@@ -400,10 +304,9 @@ def on_message(client, userdata, msg):
       print('value', valuekey, 'not found in msg values, ignoring')
       return
     v = values[valuekey]
-    # textcolor = getColorFromThreshold(v)
+    textcolor = getColorFromThreshold(v)
     # print(valuekey, v, getColorFromThreshold(v))
-  #    setAllColor(textcolor)
-    setBarLevel(v)
+    setAllColor(textcolor)
     last_update = time.time()
 
   except Exception as e:
@@ -429,40 +332,28 @@ n.notify("WATCHDOG=1")
 MEAS_INTERVAL = cfg['interval']
 def main():
   global err_col_runner
-  write_log_every = 50
-  write_log_counter = 0
-  running_in_error_mode = False
   while RUNNING:
     run_started_at = time.time()
 
     if last_update + timeout_s < run_started_at:
-      if write_log_counter == 0:
-        print("Apa102 timeout, running error color wheel")
-        write_log_counter = write_log_every
-      write_log_counter -= 1
-
+      DEBUG and print("timeout!")
       c_err_col = error_colors[err_col_runner]
       err_col_runner += 1
       if err_col_runner == nr_err_col:
         err_col_runner = 0
       DEBUG and print("setColor", c_err_col, str2hexColor(c_err_col))
       setAllColor(c_err_col)
-      running_in_error_mode = True
-    else:
-      if running_in_error_mode == True:
-        print("Apa102 timeout over")
-        running_in_error_mode = False
 
     n.notify("WATCHDOG=1")
 
     run_finished_at = time.time()
     run_duration = run_finished_at - run_started_at
 
-    # DEBUG and print("duration of run: {:10.4f}s.".format(run_duration))
+    DEBUG and print("duration of run: {:10.4f}s.".format(run_duration))
 
     to_wait = MEAS_INTERVAL - run_duration
     if to_wait > 0:
-      # DEBUG and print("wait for "+str(to_wait)+"s")
+      DEBUG and print("wait for "+str(to_wait)+"s")
       time.sleep(to_wait - 0.002)
     else:
       DEBUG and print("no wait, {0:4f}ms over".format(- to_wait*1000))
@@ -470,8 +361,6 @@ def main():
 
 sub=threading.Thread(target=subscribing)
 pub=threading.Thread(target=main)
-
-call ("/usr/local/bin/spidev_test -N", shell=True) #disable SPI0-CS
 
 ### Start MAIN ###
 

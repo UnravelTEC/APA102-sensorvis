@@ -1,16 +1,13 @@
 # target value
 target:
-  measurement: gas
+  measurement: particulate_matter
   tags:
-    sensor: SCD30
-  value: CO2_ppm
+    sensor: SPS30
+  value: p10_ugpm3
 
-busfreq: 100000
-leds: 56
-skip: 0
-fixed: 8 # nr leds before strip
-timeout_s: 5
+busfreq: 10000
 brightness: 100
+timeout_s: 5
 
 colors:
   green: 0x00FF00
@@ -18,20 +15,17 @@ colors:
   orange: 0xFF3300
   red: 0xFF0000
   blue: 0x0000FF
-  max: 0x8E44AD # violet
 
 thresholds:
   - 
     - 0
     - green
   - 
-    - 800
+    - 30
     - yellow
   - 
-    - 1500
+    - 50
     - orange
   - 
-    - 2500
+    - 100
     - red
-
-maxvalue: 4000
