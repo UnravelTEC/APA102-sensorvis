@@ -241,9 +241,9 @@ def setPixel(lednr, red, green, blue, bright_percent=100):
   ledstart = (brightness & 0b00011111) | LED_START
   start_index = 4 * lednr
   LED_ARR[start_index] = ledstart
-  LED_ARR[start_index + 3] = red
-  LED_ARR[start_index + 2] = green
-  LED_ARR[start_index + 1] = blue
+  LED_ARR[start_index + 1] = red
+  LED_ARR[start_index + 2] = blue
+  LED_ARR[start_index + 3] = green
 
 def show():
   spi.xfer([0] * 4) # clock_start_frame

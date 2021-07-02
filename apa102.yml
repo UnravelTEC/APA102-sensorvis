@@ -5,8 +5,7 @@ target:
     sensor: SPS30
   value: p10_ugpm3
 
-busfreq: 10000
-brightness: 100
+leds: 1
 timeout_s: 5
 
 colors:
