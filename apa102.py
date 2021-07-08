@@ -251,6 +251,14 @@ def show():
   for _ in range((nleds + 15) // 16): # clock_end_frame
     spi.xfer([0x00])
 
+def resetNrLEDs(led_count):
+  time.sleep(0.1)
+  spi.xfer([0] * 4)
+  spi.xfer([0x01] * 4 * led_count)
+  for _ in range((led_count + 15) // 16):
+    spi.xfer([0x00])
+  time.sleep(0.1)
+
 def clearStrip():
   for led in range(nleds):
     setPixel(led,0,0,0,0)
@@ -363,6 +371,8 @@ sub=threading.Thread(target=subscribing)
 pub=threading.Thread(target=main)
 
 ### Start MAIN ###
+
+resetNrLEDs(160)
 
 sub.start()
 pub.start()
