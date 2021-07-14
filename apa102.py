@@ -293,6 +293,17 @@ error_colors = [ "red", "green", "blue" ]
 nr_err_col = len(error_colors)
 err_col_runner = 0
 
+def resetNrLEDs(led_count):
+  time.sleep(0.1)
+  spi.xfer([0] * 4)
+  spi.xfer([0x01] * 4 * led_count)
+  for _ in range((led_count + 15) // 16):
+    spi.xfer([0x00])
+  time.sleep(0.1)
+  spi.xfer([0xFF] * 4) # end frame
+
+resetNrLEDs(160)
+
 setAllColor("red")
 time.sleep(0.33)
 setAllColor("green")
