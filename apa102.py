@@ -161,7 +161,7 @@ def setPixel(lednr, red, green, blue, bright_percent=G_BN):
   ledstart = 0xFF # full global brightness
   start_index = 4 * lednr
   LED_ARR[start_index] = ledstart
-  LED_ARR[start_index + 3] = ceil(red * bn_float) 
+  LED_ARR[start_index + 3] = ceil(red * bn_float)
   LED_ARR[start_index + 2] = ceil(green * bn_float)
   LED_ARR[start_index + 1] = ceil(blue * bn_float)
   DEBUG and print(lednr, ":", hex(LED_ARR[start_index]) , hex(LED_ARR[start_index + 1]), hex(LED_ARR[start_index + 2]), hex(LED_ARR[start_index + 3]))
@@ -229,14 +229,20 @@ def preCalcStrip():
 
 preCalcStrip()
 
+lastcfgmodtime = 0
 def setBarLevel(value, brightness = G_BN):
   global G_BN
-  with open(CFGFILE, 'r') as ymlfile:
-    filecfg = yaml.load(ymlfile)
-    newbn = filecfg['brightness']
-    newbn != G_BN and print('new bn:', newbn)
-    G_BN = newbn
-    brightness = G_BN
+  global lastcfgmodtime
+  currentcfgmodtime = os.path.getmtime(CFGFILE)
+  if currentcfgmodtime > lastcfgmodtime:
+    lastcfgmodtime = currentcfgmodtime
+    with open(CFGFILE, 'r') as ymlfile:
+      print("reading config", CFGFILE)
+      filecfg = yaml.load(ymlfile)
+      newbn = filecfg['brightness']
+      newbn != G_BN and print('new bn:', newbn)
+      G_BN = newbn
+  brightness = G_BN
 
   if value > max_value:
     value = max_value
@@ -341,6 +347,7 @@ def main():
             if isinstance(float_val,float) and metric.startswith('gas_ppm'):
               if not os.path.isfile(BUTTONFILE):
                 setBarLevel(float_val)
+                time.sleep(1.95)
               last_update = time.time()
               break
       else:
