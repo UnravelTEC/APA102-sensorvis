@@ -1,7 +1,5 @@
 [Unit]
 Description=APA102 smart LED driver
-Before=network-pre.target
-Wants=network-pre.target
 StartLimitIntervalSec=0
 
 [Service]
@@ -11,6 +9,7 @@ Environment=PYTHONUNBUFFERED=true
 WatchdogSec=30
 RestartSec=5
 ExecStart=/usr/local/bin/apa102.py
+ExecReload=/bin/kill -HUP $MAINPID
 
 [Install]
 WantedBy=sysinit.target

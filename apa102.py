@@ -51,6 +51,7 @@ cfg = {
     "fixed": 0,
     "skip": 0, # for our 8-led boards, skip # after the 1st
     "configfile": "/etc/lcars/" + name.lower() + ".yml",
+    "colororder": "bgr",
     "colors": {
         "green": 0x00FF00,
         "yellow": 0xFFAA00,
@@ -154,6 +155,16 @@ G_BN = cfg['brightness']
 LED_START = 0b11100000 # Three "1" bits, followed by 5 brightness bits
 LED_ARR = [LED_START,0,0,0] * nleds # Pixel buffer
 
+colororder = cfg['colororder']
+if colororder == "rbg":
+  LED_POS_R = 1
+  LED_POS_B = 2
+  LED_POS_G = 3
+if colororder == "bgr":
+  LED_POS_B = 1
+  LED_POS_G = 2
+  LED_POS_R = 3
+
 def setPixel(lednr, red, green, blue, bright_percent=G_BN):
   bn_float = bright_percent / 100
   if lednr < 0 or lednr >= nleds:
@@ -161,10 +172,10 @@ def setPixel(lednr, red, green, blue, bright_percent=G_BN):
   ledstart = 0xFF # full global brightness
   start_index = 4 * lednr
   LED_ARR[start_index] = ledstart
-  LED_ARR[start_index + 3] = ceil(red * bn_float)
-  LED_ARR[start_index + 2] = ceil(green * bn_float)
-  LED_ARR[start_index + 1] = ceil(blue * bn_float)
-  DEBUG and print(lednr, ":", hex(LED_ARR[start_index]) , hex(LED_ARR[start_index + 1]), hex(LED_ARR[start_index + 2]), hex(LED_ARR[start_index + 3]))
+  LED_ARR[start_index + LED_POS_R] = ceil(red * bn_float) 
+  LED_ARR[start_index + LED_POS_B] = ceil(blue * bn_float)
+  LED_ARR[start_index + LED_POS_G] = ceil(green * bn_float)
+  DEBUG and print(lednr, ":", hex(LED_ARR[start_index]) , hex(LED_ARR[start_index + 1]), hex(LED_ARR[start_index + 2]), hex(LED_ARR[start_index + 3]), colororder)
 
 def show():
   spi.xfer([0] * 4) # clock_start_frame
@@ -229,19 +240,7 @@ def preCalcStrip():
 
 preCalcStrip()
 
-lastcfgmodtime = 0
 def setBarLevel(value, brightness = G_BN):
-  global G_BN
-  global lastcfgmodtime
-  currentcfgmodtime = os.path.getmtime(CFGFILE)
-  if currentcfgmodtime > lastcfgmodtime:
-    lastcfgmodtime = currentcfgmodtime
-    with open(CFGFILE, 'r') as ymlfile:
-      print("reading config", CFGFILE)
-      filecfg = yaml.load(ymlfile)
-      newbn = filecfg['brightness']
-      newbn != G_BN and print('new bn:', newbn)
-      G_BN = newbn
   brightness = G_BN
 
   if value > max_value:
@@ -299,6 +298,38 @@ error_colors = [ "red", "green", "blue" ]
 nr_err_col = len(error_colors)
 err_col_runner = 0
 
+vfile = cfg['valuefile']
+
+def updateLEDsFromSensor():
+  global last_update
+  current_file = open(vfile, 'r')
+  for line in current_file:
+    # print(line)
+    line_array = line.split()
+    if len(line_array) > 1:
+      if len(line_array) == 2:
+        metric = line_array[0]
+        float_val = float(line_array[1])
+      DEBUG and print(metric, float_val)
+      if isinstance(float_val,float) and metric.startswith('gas_ppm'):
+        if not os.path.isfile(BUTTONFILE):
+          setBarLevel(float_val)
+        last_update = time.time()
+        break
+
+def getBrightness(a=False,b=False):
+  global G_BN
+  with open(CFGFILE, 'r') as ymlfile:
+    print("reading config", CFGFILE)
+    filecfg = yaml.load(ymlfile)
+    newbn = filecfg['brightness']
+    newbn != G_BN and print('new bn:', newbn)
+    G_BN = newbn
+    updateLEDsFromSensor()
+
+signal.signal(signal.SIGHUP, getBrightness)
+getBrightness()
+
 def resetNrLEDs(led_count):
   time.sleep(0.1)
   spi.xfer([0] * 4)
@@ -317,8 +348,6 @@ time.sleep(0.33)
 setAllColor("blue")
 time.sleep(0.33)
 
-vfile = cfg['valuefile']
-
 
 n.notify("WATCHDOG=1")
 MEAS_INTERVAL = cfg['interval']
@@ -335,21 +364,8 @@ def main():
       currentmodtime = os.path.getmtime(vfile)
       if currentmodtime > lastmodtime:
         lastmodtime = currentmodtime
-        current_file = open(vfile, 'r')
-        for line in current_file:
-          # print(line)
-          line_array = line.split()
-          if len(line_array) > 1:
-            if len(line_array) == 2:
-              metric = line_array[0]
-              float_val = float(line_array[1])
-            DEBUG and print(metric, float_val)
-            if isinstance(float_val,float) and metric.startswith('gas_ppm'):
-              if not os.path.isfile(BUTTONFILE):
-                setBarLevel(float_val)
-                time.sleep(1.95)
-              last_update = time.time()
-              break
+        updateLEDsFromSensor()
+        time.sleep(1.95)
       else:
         DEBUG and print('wait for file update')
 
