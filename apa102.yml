@@ -6,9 +6,10 @@ target:
   value: CO2_ppm
 
 busfreq: 100000
-leds: 56
+colororder: bgr
+leds: 9
 skip: 0
-fixed: 8 # nr leds before strip
+fixed: 1 # nr leds before strip
 timeout_s: 5
 brightness: 100
 
