@@ -7,10 +7,11 @@ target:
 
 busfreq: 100000
 leds: 21
-skip: 1
+skip: 0
 fixed: 0 # nr leds before strip
 timeout_s: 30
 brightness: 1
+colororder: bgr
 
 colors:
   green: 0x00FF00
@@ -35,8 +36,10 @@ thresholds:
     - 2500
     - red
 
-thresholds_single:
-  - 0 # from this value on
+thresholds_single: # from this value on
+  - 50000 # hack to skip 1st led
+  - 200
+  - 300
   - 400
   - 600
   - 800
