@@ -6,7 +6,7 @@ target:
   value: CO2_ppm
 
 busfreq: 100000
-colororder: bgr
+colororder: rbg # rbg | bgr
 leds: 9
 skip: 0
 fixed: 1 # nr leds before strip
